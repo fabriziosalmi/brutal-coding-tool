@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -44,6 +45,44 @@
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #555; 
+      }
+
+      /* Print Styles */
+      @media print {
+        body {
+          background-color: white !important;
+          color: black !important;
+        }
+        #root {
+            background-color: white !important;
+        }
+        .print\:hidden {
+          display: none !important;
+        }
+        .print\:block {
+            display: block !important;
+        }
+        .print\:bg-white {
+            background-color: white !important;
+        }
+        .print\:bg-none {
+            background: none !important;
+        }
+        .print\:text-black {
+            color: black !important;
+        }
+        .print\:border-black {
+            border-color: black !important;
+        }
+        .print\:prose-black {
+            color: black !important;
+        }
+        .print\:prose-black strong {
+            color: black !important;
+        }
+        .print\:prose-black li::marker {
+            color: black !important;
+        }
       }
     </style>
   <script type="importmap">

@@ -1,12 +1,124 @@
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Download, AlertTriangle, Terminal, Code, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react';
+import { Download, AlertTriangle, Terminal, Code, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw, Printer, ArrowRight, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { AppState, AuditResult } from './types';
 import { runAudit } from './services/geminiService';
 import { fetchGitHubRepoData, formatContext } from './services/githubService';
-import ScoreChart from './components/ScoreChart';
 import { TerminalOutput } from './components/TerminalOutput';
+import { AuditDashboard } from './components/AuditDashboard';
+
+// --- Report Parsing Helpers ---
+
+const parseReport = (markdown: string) => {
+  const sections = {
+    phase1: "",
+    phase2: "",
+    phase3: "",
+    verdict: "",
+  };
+
+  const phase1Match = markdown.match(/## 📊 PHASE 1: THE 20-POINT MATRIX([\s\S]*?)(?=## 📉 PHASE 2)/);
+  const phase2Match = markdown.match(/## 📉 PHASE 2: THE SCORES([\s\S]*?)(?=## 🛠️ PHASE 3)/);
+  const phase3Match = markdown.match(/## 🛠️ PHASE 3: THE PARETO FIX PLAN([\s\S]*?)(?=## 🔥 FINAL VERDICT)/);
+  const verdictMatch = markdown.match(/## 🔥 FINAL VERDICT([\s\S]*?)$/);
+
+  if (phase1Match) sections.phase1 = phase1Match[1].trim();
+  if (phase2Match) sections.phase2 = phase2Match[1].trim();
+  if (phase3Match) sections.phase3 = phase3Match[1].trim();
+  if (verdictMatch) sections.verdict = verdictMatch[1].trim();
+
+  const isParsed = !!phase1Match;
+  return { sections, isParsed };
+};
+
+// --- Specialized Components for Better Readability ---
+
+const Phase1Card: React.FC<{ title: string; items: string[] }> = ({ title, items }) => {
+    return (
+        <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-5 hover:border-gray-700 transition-all break-inside-avoid print:bg-white print:border-black">
+            <h4 className="text-terminal-green font-mono font-bold text-lg mb-4 border-b border-gray-800 pb-2 print:text-black print:border-black">
+                {title.replace('### ', '').trim()}
+            </h4>
+            <div className="space-y-4">
+                {items.map((item, idx) => {
+                    // Try to extract score [x/5]
+                    const scoreMatch = item.match(/\*\*\[(\d)\/5\](.*?)\*\*:(.*)/);
+                    if (scoreMatch) {
+                        const score = parseInt(scoreMatch[1]);
+                        const metric = scoreMatch[2];
+                        const desc = scoreMatch[3];
+                        
+                        let dotColor = "bg-gray-600";
+                        if (score >= 4) dotColor = "bg-terminal-green";
+                        else if (score >= 2) dotColor = "bg-terminal-amber";
+                        else dotColor = "bg-terminal-red";
+
+                        return (
+                            <div key={idx} className="text-sm">
+                                <div className="flex items-start gap-3">
+                                    <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${dotColor} print:border print:border-black`}></div>
+                                    <div>
+                                        <span className="font-mono font-bold text-gray-200 print:text-black">{metric}</span>
+                                        <span className="text-gray-500 font-mono text-xs ml-2 print:text-gray-600">[{score}/5]</span>
+                                        <p className="text-gray-400 mt-1 leading-relaxed print:text-black">{desc}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+                    // Fallback
+                    return <div key={idx} className="text-sm text-gray-400 print:text-black"><ReactMarkdown>{item}</ReactMarkdown></div>
+                })}
+            </div>
+        </div>
+    )
+}
+
+const Phase1Grid: React.FC<{ content: string }> = ({ content }) => {
+  const sections = content.split(/(?=### )/g).filter(s => s.trim().length > 0);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+      {sections.map((section, idx) => {
+         const lines = section.split('\n').filter(l => l.trim().length > 0);
+         const title = lines[0];
+         const items = lines.slice(1).join('\n').split(/(?=\d\. \*\*)/g).filter(s => s.trim().length > 0);
+         
+         if (items.length === 0) return null;
+
+         return <Phase1Card key={idx} title={title} items={items} />;
+      })}
+    </div>
+  );
+};
+
+const FixPlanList: React.FC<{ content: string }> = ({ content }) => {
+    // Split by numbered list "1. ", "2. " etc
+    const items = content.split(/\n(?=\d+\.)/).filter(s => s.trim().length > 0);
+
+    return (
+        <div className="space-y-3">
+            {items.map((item, idx) => {
+                const cleanItem = item.replace(/^\d+\.\s*/, '');
+                return (
+                    <div key={idx} className="flex gap-4 p-4 bg-black/40 border border-gray-800 rounded-lg hover:bg-gray-900/40 transition-colors print:bg-white print:border-black">
+                        <div className="flex-shrink-0 pt-1">
+                            <div className="w-6 h-6 rounded border border-gray-700 flex items-center justify-center text-xs font-mono text-gray-500 print:border-black print:text-black">
+                                {idx + 1}
+                            </div>
+                        </div>
+                        <div className="prose prose-invert prose-sm max-w-none print:prose-black">
+                             <ReactMarkdown>{cleanItem}</ReactMarkdown>
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
+    );
+};
+
+// --- Main App ---
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
@@ -27,7 +139,6 @@ const App: React.FC = () => {
     setError(null);
     let auditContext = fetchedContext;
 
-    // Phase 1: Fetch Data if not already fetched or if URL changed
     if (!auditContext) {
       setIsFetching(true);
       try {
@@ -42,7 +153,6 @@ const App: React.FC = () => {
       setIsFetching(false);
     }
 
-    // Phase 2: Analyze with Gemini
     setState(AppState.ANALYZING);
     try {
       const data = await runAudit(repoUrl, auditContext);
@@ -67,6 +177,10 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handlePrint = () => {
+      window.print();
+  };
+
   const handleReset = () => {
     setState(AppState.IDLE);
     setFetchedContext('');
@@ -75,10 +189,12 @@ const App: React.FC = () => {
     setError(null);
   };
 
+  const parsedReport = result ? parseReport(result.markdownReport) : null;
+
   return (
-    <div className="min-h-screen bg-terminal-black text-gray-300 font-sans selection:bg-terminal-red selection:text-white pb-20">
-      {/* Header */}
-      <header className="border-b border-gray-800 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+    <div className="min-h-screen bg-terminal-black text-gray-300 font-sans selection:bg-terminal-red selection:text-white pb-20 print:bg-white print:text-black print:pb-0">
+      {/* Header - Hidden in Print */}
+      <header className="border-b border-gray-800 bg-black/50 backdrop-blur-md sticky top-0 z-50 print:hidden">
         <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-terminal-red/10 rounded border border-terminal-red/20">
@@ -86,7 +202,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white font-mono">BRUTAL REP AUDITOR</h1>
-              <p className="text-xs text-gray-500 font-mono">V2.1 // AUTO-RECONNAISSANCE MODE</p>
+              <p className="text-xs text-gray-500 font-mono">V2.2 // DEEP SCAN PROTOCOL</p>
             </div>
           </div>
           <div className="text-xs font-mono text-gray-500 border border-gray-800 px-3 py-1 rounded-full">
@@ -95,30 +211,27 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
+      <main className="max-w-6xl mx-auto px-6 py-10 print:px-0 print:py-0 print:max-w-none">
         
-        {/* Intro Section */}
+        {/* Intro Section - Hidden in Print */}
         {state === AppState.IDLE && (
-          <div className="mb-12 text-center max-w-2xl mx-auto">
+          <div className="mb-12 text-center max-w-2xl mx-auto print:hidden">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Is your code <span className="text-terminal-green">Engineering Substance</span> or <span className="text-terminal-red">AI Slop</span>?
             </h2>
-            <p className="text-gray-400 mb-8">
+            <p className="text-gray-400 mb-8 leading-relaxed">
               Generate a ruthless, no-nonsense technical due diligence report for any public Git repository. 
               Automatically fetches history, structure, and docs for deep analysis.
             </p>
           </div>
         )}
 
-        {/* Input Section */}
-        <div className={`transition-all duration-500 ${state === AppState.COMPLETE ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
-          <div className="grid gap-6 bg-gray-900/30 border border-gray-800 p-6 rounded-xl relative overflow-hidden">
-             {/* Decorative Scan Line */}
+        {/* Input Section - Hidden in Print */}
+        <div className={`transition-all duration-500 print:hidden ${state === AppState.COMPLETE ? 'hidden' : 'opacity-100'}`}>
+          <div className="grid gap-6 bg-gray-900/30 border border-gray-800 p-6 rounded-xl relative overflow-hidden max-w-3xl mx-auto">
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-terminal-red to-transparent opacity-20"></div>
 
             <div className="grid md:grid-cols-1 gap-6">
-              
-              {/* Repository URL Input */}
               <div>
                 <label className="block text-sm font-mono text-gray-400 mb-2">TARGET REPOSITORY URL (GITHUB)</label>
                 <div className="relative group">
@@ -128,7 +241,7 @@ const App: React.FC = () => {
                     value={repoUrl}
                     onChange={(e) => {
                         setRepoUrl(e.target.value);
-                        setFetchedContext(''); // Clear context if URL changes
+                        setFetchedContext('');
                     }}
                     placeholder="https://github.com/username/repo"
                     className="w-full bg-black border border-gray-700 rounded-lg py-3 pl-10 pr-4 text-white font-mono focus:outline-none focus:border-terminal-green focus:ring-1 focus:ring-terminal-green transition-colors"
@@ -136,7 +249,6 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Advanced / Optional Options */}
               <div className="border-t border-gray-800 pt-4">
                 <button 
                     onClick={() => setShowAdvanced(!showAdvanced)}
@@ -178,7 +290,6 @@ const App: React.FC = () => {
                     </div>
                 )}
               </div>
-
             </div>
 
             {error && (
@@ -206,95 +317,128 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Loading Terminal */}
         {state === AppState.ANALYZING && (
-          <div className="mt-8">
+          <div className="mt-8 print:hidden max-w-3xl mx-auto">
             <TerminalOutput />
           </div>
         )}
 
-        {/* Results View */}
-        {state === AppState.COMPLETE && result && (
-          <div className="mt-12 animate-fade-in-up">
+        {/* RESULTS VIEW */}
+        {state === AppState.COMPLETE && result && parsedReport && (
+          <div className="mt-8 animate-fade-in-up">
             
-            {/* Scorecard Dashboard */}
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-                {/* Visual Chart */}
-                <div className="md:col-span-1">
-                    {result.scores && <ScoreChart scores={result.scores} />}
-                </div>
-
-                {/* Verdict Box */}
-                <div className="md:col-span-2 bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-lg p-6 flex flex-col justify-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <FileText className="w-32 h-32 text-white" />
-                    </div>
-                    <h3 className="text-gray-500 font-mono uppercase text-sm mb-2">Final Verdict</h3>
-                    <p className="text-2xl md:text-3xl font-bold text-white leading-tight font-sans">
-                        "{result.verdict}"
-                    </p>
-                    <div className="mt-6 flex flex-wrap gap-4">
-                         <button 
-                            onClick={handleDownload}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded font-mono text-sm border border-gray-700 transition-all"
-                        >
-                            <Download className="w-4 h-4" />
-                            DOWNLOAD .MD
-                        </button>
-                        <button 
-                            onClick={handleReset}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white border border-gray-700 hover:border-terminal-red rounded font-mono text-sm transition-all group"
-                        >
-                            <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform" />
-                            AUDIT ANOTHER REPO
-                        </button>
-                    </div>
+            {/* ACTION BAR - Hidden in Print */}
+            <div className="flex justify-between items-center mb-8 print:hidden sticky top-20 z-40 bg-black/80 backdrop-blur py-4 border-b border-gray-800">
+                 <button 
+                    onClick={handleReset}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white border border-gray-700 hover:border-terminal-red rounded-lg font-mono text-sm transition-all group"
+                >
+                    <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform" />
+                    AUDIT ANOTHER
+                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handlePrint}
+                        className="flex items-center gap-2 px-4 py-2 bg-terminal-gray hover:bg-gray-800 text-white rounded-lg font-mono text-sm border border-gray-700 transition-all"
+                    >
+                        <Printer className="w-4 h-4" />
+                        PRINT
+                    </button>
+                    <button 
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 px-4 py-2 bg-terminal-gray hover:bg-gray-800 text-white rounded-lg font-mono text-sm border border-gray-700 transition-all"
+                    >
+                        <Download className="w-4 h-4" />
+                        .MD
+                    </button>
                 </div>
             </div>
 
-            {/* Markdown Report Render */}
-            <div className="bg-black border border-gray-800 rounded-xl p-8 shadow-2xl relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-terminal-gray"></div>
+            {/* PRINT HEADER - Visible only in Print */}
+            <div className="hidden print:block mb-8 border-b border-black pb-4">
+                <h1 className="text-3xl font-bold font-mono text-black">BRUTAL REP AUDITOR REPORT</h1>
+                <p className="text-sm font-mono text-gray-600">Generated: {new Date().toLocaleDateString()}</p>
+                <p className="text-sm font-mono text-gray-600">Repo: {result.repoName}</p>
+                <p className="text-lg font-bold mt-2 text-black">Verdict: {result.verdict}</p>
+            </div>
+
+            {/* REPORT LAYOUT */}
+            <div className="space-y-12">
                 
-                <article className="prose prose-invert prose-headings:font-mono prose-headings:text-white prose-p:text-gray-300 prose-li:text-gray-300 max-w-none">
-                     <ReactMarkdown
-                        components={{
-                            h1: ({node, ...props}) => <h1 className="text-3xl font-bold border-b border-gray-800 pb-4 mb-6 text-terminal-green" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-2xl font-bold mt-10 mb-4 text-white flex items-center gap-2" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-xl font-bold mt-6 mb-3 text-gray-200" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
-                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-terminal-red pl-4 italic bg-red-900/10 py-2 pr-2 my-4 rounded-r" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-1 my-4" {...props} />,
-                            li: ({node, ...props}) => <li className="pl-1" {...props} />,
-                            code: ({node, ...props}) => {
-                                const { className, children, ...rest } = props;
-                                const match = /language-(\w+)/.exec(className || '');
-                                const isInline = !match && !String(children).includes('\n');
-                                
-                                return isInline ? (
-                                    <code className="bg-gray-800 text-terminal-amber px-1 py-0.5 rounded font-mono text-sm" {...rest}>
-                                        {children}
-                                    </code>
-                                ) : (
-                                    <pre className="bg-gray-900 border border-gray-800 p-4 rounded-lg overflow-x-auto my-4 text-sm text-gray-300">
-                                        <code className={className} {...rest}>
-                                            {children}
-                                        </code>
-                                    </pre>
-                                );
-                            }
-                        }}
-                     >
-                        {result.markdownReport}
-                     </ReactMarkdown>
-                </article>
+                {/* 1. TOP ROW: DASHBOARD & VERDICT */}
+                <div className="grid lg:grid-cols-2 gap-8 break-inside-avoid">
+                    
+                    {/* Verdict Card */}
+                    <div className="flex flex-col bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl p-8 relative overflow-hidden print:bg-white print:border-black print:text-black">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 print:hidden">
+                            <FileText className="w-40 h-40 text-white" />
+                        </div>
+                        <h3 className="text-gray-500 font-mono uppercase text-xs mb-3 tracking-[0.2em] print:text-gray-600">Executive Summary</h3>
+                        <p className="text-2xl md:text-3xl font-bold text-white leading-tight font-sans italic mb-6 print:text-black">
+                            "{result.verdict}"
+                        </p>
+                        <div className="mt-auto pt-6 border-t border-gray-800 print:border-black">
+                             <div className="prose prose-invert prose-sm max-w-none text-gray-400 print:prose-black">
+                                <ReactMarkdown>{parsedReport.sections.verdict}</ReactMarkdown>
+                             </div>
+                        </div>
+                    </div>
+
+                    {/* Chart Dashboard */}
+                    <div className="print:break-inside-avoid">
+                         {result.scores && <AuditDashboard scores={result.scores} />}
+                    </div>
+                </div>
+
+                {/* 2. PHASE 1: THE MATRIX (GRID) */}
+                <section className="space-y-6">
+                    <div className="flex items-center gap-3 mb-4 border-b border-gray-800 pb-4 print:border-black">
+                        <div className="w-2 h-8 bg-terminal-green print:bg-black"></div>
+                        <div>
+                             <h2 className="text-2xl font-bold font-mono text-white print:text-black">PHASE 1: THE MATRIX</h2>
+                             <p className="text-xs text-gray-500 font-mono">20-POINT DEEP DIVE ANALYSIS</p>
+                        </div>
+                    </div>
+                    {parsedReport.isParsed ? (
+                        <Phase1Grid content={parsedReport.sections.phase1} />
+                    ) : (
+                        <div className="bg-gray-900/50 p-6 rounded border border-gray-800 print:bg-white print:border-black">
+                             <ReactMarkdown className="prose prose-invert max-w-none print:prose-black">{result.markdownReport}</ReactMarkdown>
+                        </div>
+                    )}
+                </section>
+
+                {/* 3. PHASE 2: SCORES DETAIL */}
+                <section className="bg-gray-900/20 border border-gray-800 rounded-xl p-8 print:bg-white print:border-black break-inside-avoid">
+                     <div className="flex items-center gap-3 mb-6">
+                        <div className="w-2 h-6 bg-terminal-amber print:bg-black"></div>
+                        <h2 className="text-xl font-bold font-mono text-white print:text-black">PHASE 2: VIBE CHECK & PENALTIES</h2>
+                    </div>
+                     <div className="prose prose-invert max-w-none text-gray-300 print:prose-black">
+                        <ReactMarkdown>{parsedReport.sections.phase2}</ReactMarkdown>
+                    </div>
+                </section>
+
+                 {/* 4. PHASE 3: FIX PLAN */}
+                 <section className="bg-terminal-gray/10 border border-gray-800 rounded-xl p-8 print:bg-white print:border-black">
+                     <div className="flex items-center gap-3 mb-6">
+                        <div className="w-2 h-8 bg-terminal-red print:bg-black"></div>
+                        <div>
+                            <h2 className="text-2xl font-bold font-mono text-white print:text-black">PHASE 3: THE FIX PLAN</h2>
+                            <p className="text-xs text-gray-500 font-mono">PRIORITIZED REMEDIATION STEPS</p>
+                        </div>
+                    </div>
+                    <FixPlanList content={parsedReport.sections.phase3} />
+                </section>
+
             </div>
           </div>
         )}
       </main>
       
-      <footer className="fixed bottom-0 w-full border-t border-gray-900 bg-black/80 backdrop-blur text-center py-2 text-xs text-gray-700 font-mono">
-        GENERATED BY GEMINI 2.5 FLASH • STRICT LIABILITY PROTOCOL ENABLED
+      <footer className="w-full border-t border-gray-900 bg-black py-6 text-center text-xs text-gray-700 font-mono print:hidden mt-20">
+        <p>GENERATED BY BRUTAL REP AUDITOR • GEMINI 2.5 FLASH POWERED</p>
+        <p className="mt-1 opacity-50">STRICT LIABILITY PROTOCOL ENABLED</p>
       </footer>
     </div>
   );

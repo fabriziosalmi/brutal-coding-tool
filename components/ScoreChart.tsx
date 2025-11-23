@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Radar,
@@ -32,33 +33,26 @@ const ScoreChart: React.FC<ScoreChartProps> = ({ scores }) => {
   const chartColor = getScoreColor(scores.total);
 
   return (
-    <div className="w-full h-[300px] bg-terminal-gray/50 rounded-lg border border-gray-800 p-4 relative">
-        <div className="absolute top-4 left-4 z-10">
-            <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">Total Score</div>
-            <div className={`text-4xl font-mono font-bold`} style={{ color: chartColor }}>
-                {scores.total}<span className="text-lg text-gray-600">/100</span>
-            </div>
-        </div>
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
-          <PolarGrid stroke="#333" />
-          <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 12, fontFamily: 'monospace' }} />
-          <PolarRadiusAxis angle={30} domain={[0, 20]} tick={false} axisLine={false} />
-          <Radar
-            name="Score"
-            dataKey="A"
-            stroke={chartColor}
-            strokeWidth={2}
-            fill={chartColor}
-            fillOpacity={0.3}
-          />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#000', borderColor: '#333', color: '#fff' }}
-            itemStyle={{ color: chartColor }}
-          />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+      <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
+        <PolarGrid stroke="#333" />
+        <PolarAngleAxis dataKey="subject" tick={{ fill: '#666', fontSize: 10, fontFamily: 'monospace' }} />
+        <PolarRadiusAxis angle={30} domain={[0, 20]} tick={false} axisLine={false} />
+        <Radar
+          name="Score"
+          dataKey="A"
+          stroke={chartColor}
+          strokeWidth={2}
+          fill={chartColor}
+          fillOpacity={0.2}
+        />
+        <Tooltip 
+          contentStyle={{ backgroundColor: '#000', borderColor: '#333', color: '#fff', fontSize: '12px', fontFamily: 'monospace' }}
+          itemStyle={{ color: chartColor }}
+          separator=": "
+        />
+      </RadarChart>
+    </ResponsiveContainer>
   );
 };
 
