@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 
 const MESSAGES = [
@@ -14,8 +13,23 @@ const MESSAGES = [
     "Evaluating concurrency model...",
     "Judging variable naming conventions...",
     "Calculating technical debt interest rate...",
-    "Finalizing brutal verdict..."
+    "Compiling Phase 1 Matrix...", 
+    "Synthesizing vibe check scores...", 
+    "Drafting Pareto Fix Plan...", 
+    "Verifying architectural consistency...",
+    "Formatting final brutal verdict...",
+    "Generating report markdown..." 
 ];
+
+const OVERTIME_MESSAGES = [
+    "Deepening analysis of edge cases...",
+    "Refining score calculations...",
+    "Polishing output format...",
+    "Double-checking logic consistency...",
+    "Almost there..."
+];
+
+const STEP_DURATION = 1200; // 1.2s per step
 
 export const TerminalOutput: React.FC = () => {
     const [lines, setLines] = useState<string[]>([]);
@@ -23,21 +37,43 @@ export const TerminalOutput: React.FC = () => {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setStepIndex(prev => {
-                if (prev >= MESSAGES.length) {
-                    clearInterval(interval);
-                    return prev;
-                }
-                const message = MESSAGES[prev];
-                setLines(old => [...old.slice(-6), `> ${message}`]);
-                return prev + 1;
-            });
-        }, 800);
+            setStepIndex(prev => prev + 1);
+        }, STEP_DURATION);
         return () => clearInterval(interval);
     }, []);
 
-    const progress = Math.min((stepIndex / MESSAGES.length) * 100, 100);
-    const eta = Math.max(0, (MESSAGES.length - stepIndex) * 0.8).toFixed(1);
+    useEffect(() => {
+        // Logic to update the terminal lines based on stepIndex
+        let message = "";
+        
+        if (stepIndex < MESSAGES.length) {
+            message = MESSAGES[stepIndex];
+        } else {
+            // Overtime logic: Show a keep-alive message every 2 ticks (approx 2.4s)
+            // to avoid spamming the log but keep it alive.
+            const overtimeIndex = stepIndex - MESSAGES.length;
+            if (overtimeIndex % 2 === 0) {
+                const msgIndex = (overtimeIndex / 2) % OVERTIME_MESSAGES.length;
+                message = OVERTIME_MESSAGES[msgIndex];
+            }
+        }
+
+        if (message) {
+            setLines(old => [...old.slice(-7), `> ${message}`]);
+        }
+    }, [stepIndex]);
+
+    // Progress Calculation
+    // We cap it at 98% if we go into overtime until the parent component unmounts this.
+    const rawProgress = ((stepIndex + 1) / MESSAGES.length) * 100;
+    const progress = Math.min(rawProgress, stepIndex >= MESSAGES.length ? 99 : 100);
+    
+    // ETA Calculation
+    // If inside normal steps, calculate remaining. If overtime, just show generic.
+    const remainingSteps = Math.max(0, MESSAGES.length - stepIndex);
+    const eta = remainingSteps > 0 
+        ? (remainingSteps * (STEP_DURATION / 1000)).toFixed(0) 
+        : "CALCULATING";
 
     return (
         <div className="w-full font-mono text-sm bg-black border border-gray-800 p-6 rounded-xl shadow-[0_0_30px_rgba(0,255,65,0.05)] relative overflow-hidden">
@@ -68,7 +104,7 @@ export const TerminalOutput: React.FC = () => {
             <div className="space-y-2">
                 <div className="flex justify-between text-xs text-gray-500 font-mono">
                     <span>PHASE: {stepIndex < MESSAGES.length ? "PROCESSING" : "FINALIZING"}</span>
-                    <span>EST. REMAINING: {eta}s</span>
+                    <span>EST. REMAINING: {eta === "CALCULATING" ? "..." : `${eta}s`}</span>
                 </div>
                 <div className="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden border border-gray-800/50">
                     <div 
@@ -77,7 +113,7 @@ export const TerminalOutput: React.FC = () => {
                     ></div>
                 </div>
                 <div className="flex justify-between text-[10px] text-gray-700 font-mono pt-1">
-                    <span>STEP {Math.min(stepIndex + 1, MESSAGES.length)}/{MESSAGES.length}</span>
+                    <span>STEP {Math.min(stepIndex + 1, MESSAGES.length + (stepIndex >= MESSAGES.length ? 1 : 0))}/{MESSAGES.length}</span>
                     <span>THREADS: {Math.floor(Math.random() * 4) + 4} ACTIVE</span>
                 </div>
             </div>
