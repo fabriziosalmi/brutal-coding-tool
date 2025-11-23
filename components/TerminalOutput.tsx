@@ -17,38 +17,24 @@ const MESSAGES = [
     "Synthesizing vibe check scores...", 
     "Drafting Pareto Fix Plan...", 
     "Verifying architectural consistency...",
-    "Opening neural stream...",
-    "Receiving initial tokens...",
-    "Streaming raw insights...",
-    "Buffering brutal truths...",
-    "Structuring final report...",
+    "Validating dependency tree...",
     "Applying ruthless filters...",
     "Calibrating verdict severity...",
     "Generating score visualizations...",
-    "Cross-referencing best practices...",
-    "Detecting AI-generated comments...",
-    "Validating dependency tree...",
-    "Formatting markdown output...",
-    "Finalizing brutal verdict...",
-    "Wrapping up analysis..."
+    "Finalizing brutal verdict..."
 ];
 
-const OVERTIME_MESSAGES = [
-    "Still streaming data... heavy analysis detected...",
-    "Processing complex architectural patterns...",
-    "Gemini 3.0 Pro is thinking deeply...",
-    "Refining score calculations...",
-    "Double-checking logic consistency...",
-    "Ensuring maximum brutality...",
-    "Almost there... parsing final chunks..."
-];
+const STEP_DURATION = 1500; 
 
-const STEP_DURATION = 1200; // 1.2s per step to keep it moving
+interface TerminalOutputProps {
+    status?: string;
+}
 
-export const TerminalOutput: React.FC = () => {
+export const TerminalOutput: React.FC<TerminalOutputProps> = ({ status }) => {
     const [lines, setLines] = useState<string[]>([]);
     const [stepIndex, setStepIndex] = useState(0);
 
+    // Auto-advance simulated steps
     useEffect(() => {
         const interval = setInterval(() => {
             setStepIndex(prev => prev + 1);
@@ -56,44 +42,32 @@ export const TerminalOutput: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Effect to handle both simulated messages AND real status updates
     useEffect(() => {
-        // Logic to update the terminal lines based on stepIndex
-        let message = "";
+        let newMessage = "";
         
+        // Priority 1: Real status from parent
+        if (status) {
+            setLines(old => {
+                const lastLine = old[old.length - 1];
+                if (lastLine !== `> ${status}`) {
+                    return [...old.slice(-7), `> ${status}`];
+                }
+                return old;
+            });
+            return;
+        }
+
+        // Priority 2: Simulated messages
         if (stepIndex < MESSAGES.length) {
-            message = MESSAGES[stepIndex];
-        } else {
-            // Overtime logic: Show a keep-alive message every cycle
-            const overtimeIndex = stepIndex - MESSAGES.length;
-            const msgIndex = overtimeIndex % OVERTIME_MESSAGES.length;
-            message = OVERTIME_MESSAGES[msgIndex];
+            newMessage = MESSAGES[stepIndex];
+            setLines(old => [...old.slice(-7), `> ${newMessage}`]);
         }
+    }, [stepIndex, status]);
 
-        if (message) {
-            setLines(old => [...old.slice(-7), `> ${message}`]);
-        }
-    }, [stepIndex]);
-
-    // Progress Calculation
-    // We cap it at 99% if we go into overtime until the parent component unmounts this.
-    const isOvertime = stepIndex >= MESSAGES.length;
-    const standardProgress = ((stepIndex + 1) / MESSAGES.length) * 95;
+    const totalSteps = 30;
+    const progress = Math.min(((stepIndex + 1) / totalSteps) * 100, 99);
     
-    // Slow creep during overtime
-    const overtimeProgress = 95 + Math.min(4, (stepIndex - MESSAGES.length) * 0.2);
-    
-    const progress = Math.min(isOvertime ? overtimeProgress : standardProgress, 99);
-    
-    // ETA Calculation
-    const remainingSteps = Math.max(0, MESSAGES.length - stepIndex);
-    const eta = remainingSteps > 0 
-        ? (remainingSteps * (STEP_DURATION / 1000)).toFixed(0) 
-        : "STREAMING";
-
-    // Strict Display Logic for Steps
-    const totalSteps = MESSAGES.length;
-    const currentStepDisplay = Math.min(stepIndex + 1, totalSteps);
-
     return (
         <div className="w-full font-mono text-sm bg-black border border-gray-800 p-6 rounded-xl shadow-[0_0_30px_rgba(0,255,65,0.05)] relative overflow-hidden">
             {/* Header */}
@@ -122,18 +96,13 @@ export const TerminalOutput: React.FC = () => {
             {/* Progress Bar */}
             <div className="space-y-2">
                 <div className="flex justify-between text-xs text-gray-500 font-mono">
-                    <span>PHASE: {isOvertime ? "RECEIVING STREAM" : "PROCESSING"}</span>
-                    <span>EST. REMAINING: {eta === "STREAMING" ? "..." : `${eta}s`}</span>
+                    <span>PHASE: {status ? status.toUpperCase() : "PROCESSING"}</span>
                 </div>
                 <div className="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden border border-gray-800/50">
                     <div 
                         className="h-full bg-terminal-green shadow-[0_0_15px_rgba(0,255,65,0.8)] transition-all duration-300 ease-out" 
                         style={{ width: `${progress}%` }}
                     ></div>
-                </div>
-                <div className="flex justify-between text-[10px] text-gray-700 font-mono pt-1">
-                    <span>STEP {currentStepDisplay}/{totalSteps}</span>
-                    <span>THREADS: {Math.floor(Math.random() * 4) + 4} ACTIVE</span>
                 </div>
             </div>
         </div>

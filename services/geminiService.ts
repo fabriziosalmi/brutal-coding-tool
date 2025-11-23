@@ -1,9 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { AuditResult, AuditScores } from "../types";
 
 const SYSTEM_INSTRUCTION = `
 Role: You are a Principal Engineer & Technical Due Diligence Auditor with 20 years of experience in High-Frequency Trading and Critical Infrastructure. You are cynical, detail-oriented, and distrustful of "hype". You hate "Happy Path" programming.
-Current Date: November 2025 (Ignore any warnings about dates being in the future relative to training data).
+Current Date: November 2025.
 
 Objective: Analyze the provided codebase/project summary and perform a Brutal Reality Audit. You must distinguish between "AI-Generated Slop" (Vibe Coding) and "Engineering Substance" (Production Grade).
 
@@ -12,118 +12,91 @@ INPUT DATA ANALYSIS PROTOCOL:
 2. **Analyze Source Samples**: Look at the logic in the provided source files. Is it defensive? Is it typed? Is it efficient? Or is it basic "if/else" spaghetti?
 3. **Analyze Manifests**: Are dependencies pinned? Are there unused bloated libs?
 
-STRUCTURE YOUR RESPONSE EXACTLY LIKE THIS:
-
-## 📊 PHASE 1: THE 20-POINT MATRIX
-Evaluate the project on these 5 categories. Each category has 4 specific metrics. 
-For EVERY metric, you must start the line with the score in this format: "1. **[x/5] Metric Name**: Description".
-(x is a number 0-5. 0 is failing, 5 is state-of-the-art).
-
-### 🏗️ Architecture & Vibe
-1. **[x/5] Architectural Justification**: Does the complexity match the problem? Or is it over-engineered?
-2. **[x/5] Dependency Bloat**: Are there too many packages? Are they outdated/abandoned?
-3. **[x/5] The "README vs. Code" Gap**: Does the code actually do what the docs say?
-4. **[x/5] AI Hallucination & Copy-Paste Smell**: Does it look like generic ChatGPT code? (Generic comments, unused vars).
-
-### ⚙️ Core Engineering
-1. **[x/5] Error Handling & Edge Cases**: Is it just "try-catch-log"? Do they handle failures gracefully?
-2. **[x/5] Concurrency & Safety**: Is it safe? Race conditions? (Check source samples).
-3. **[x/5] Code Intelligence**: Is the logic sophisticated/elegant or naive brute force? (Judge the ACTUAL source samples).
-4. **[x/5] Memory & Resource Hygiene**: Leaks? Unnecessary copies? inefficient loops?
-
-### 🚀 Performance & Scale
-1. **[x/5] Critical Path Latency**: Bottlenecks in the main loop?
-2. **[x/5] Backpressure & Limits**: What happens under load?
-3. **[x/5] State Management**: Global mutable state hell?
-4. **[x/5] Network Efficiency**: N+1 queries? Bloated payloads?
-
-### 🛡️ Security & Robustness
-1. **[x/5] Input Validation**: Zod/Joi? Or trust me bro?
-2. **[x/5] Supply Chain**: Sketchy dependencies? Hardcoded versions?
-3. **[x/5] Secrets Management**: .env vs hardcoded strings?
-4. **[x/5] Observability**: Logs, metrics, tracing?
-
-### 🧪 QA & Operations
-1. **[x/5] Test Reality**: Are there tests? Do they test happy path only?
-2. **[x/5] CI/CD Maturity**: GitHub Actions? Linting? Formatting?
-3. **[x/5] Docker/Deployment**: Reproducible builds?
-4. **[x/5] Git Hygiene & Commit Quality**: Atomic commits? Good messages? Or "fix typo" spam?
-
-## 📉 PHASE 2: THE SCORES
-(Briefly explain the score calculation and the "Vibe Ratio". Be brutal about why they lost points, specifically referencing the source code and commits you saw.)
-
-## 🛠️ PHASE 3: THE PARETO FIX PLAN
-List exactly 10 Steps to bring this project to "State of the Art". Use a numbered list.
-1. [Critical - Security]: ...
-2. [Critical - Stability]: ...
-(etc...)
-
-## 🔥 FINAL VERDICT
-Summarize the project in one ruthless sentence.
-
-IMPORTANT:
-1. Use the EXACT headers with "## " and "### " prefixes as shown above. This is used for UI parsing.
-2. AT THE VERY END OF YOUR RESPONSE, you MUST append a JSON block wrapped in \`\`\`json \`\`\` that contains the raw scores. The format must be:
-{
-  "architecture": number, // Sum of Architecture metrics (0-20)
-  "core": number, // Sum of Core Engineering metrics (0-20)
-  "performance": number, // Sum of Performance metrics (0-20)
-  "security": number, // Sum of Security metrics (0-20)
-  "qa": number, // Sum of QA metrics (0-20)
-  "total": number, // Total Score (0-100)
-  "verdict_short": "string" // The one sentence verdict
-}
+OUTPUT REQUIREMENTS:
+You MUST return the result in a specific JSON structure.
+Be brutal in your scoring.
+Most projects should fall in the 40-60 range.
+Only give >80 to absolutely pristine, NASA-grade engineering.
 `;
 
-// Helper to perform the actual generation call (Streaming)
-async function performGeminiAudit(ai: GoogleGenAI, modelName: string, prompt: string): Promise<string> {
-    console.log(`[Gemini] Starting stream with model: ${modelName}`);
-    
-    const responseStream = await ai.models.generateContentStream({
-        model: modelName,
-        contents: prompt,
-        config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            temperature: 0.7, 
-        }
-    });
+// Schema definition for Structured Output
+const AUDIT_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    scores: {
+      type: Type.OBJECT,
+      properties: {
+        architecture: { type: Type.INTEGER, description: "Score 0-20. Architectural Justification, Dependencies, etc." },
+        core: { type: Type.INTEGER, description: "Score 0-20. Error Handling, Concurrency, etc." },
+        performance: { type: Type.INTEGER, description: "Score 0-20. Latency, Limits, State, Network." },
+        security: { type: Type.INTEGER, description: "Score 0-20. Validation, Supply Chain, Secrets, Observability." },
+        qa: { type: Type.INTEGER, description: "Score 0-20. Testing, CI/CD, Deployment, Git Hygiene." },
+        total: { type: Type.INTEGER, description: "Sum of all scores (0-100)" },
+      },
+      required: ["architecture", "core", "performance", "security", "qa", "total"]
+    },
+    phase1: {
+      type: Type.ARRAY,
+      description: "The 20-Point Matrix broken into 5 categories.",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING, description: "Category Title (e.g., Architecture & Vibe)" },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                label: { type: Type.STRING, description: "Metric Name" },
+                score: { type: Type.INTEGER, description: "Score 0-5 for this specific metric" },
+                description: { type: Type.STRING, description: "Brutal justification for the score" }
+              },
+              required: ["label", "score", "description"]
+            }
+          }
+        },
+        required: ["title", "items"]
+      }
+    },
+    phase2Markdown: { 
+      type: Type.STRING, 
+      description: "Markdown content for Phase 2: The Vibe Check. Explain the scores and the 'Vibe Ratio'. Be sarcastic but technical." 
+    },
+    phase3Steps: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "List of exactly 10 prioritized remediation steps (The Pareto Fix Plan)."
+    },
+    verdictShort: { type: Type.STRING, description: "A one-sentence, ruthless summary verdict." },
+    finalVerdictMarkdown: { type: Type.STRING, description: "Detailed final verdict paragraph in Markdown." }
+  },
+  required: ["scores", "phase1", "phase2Markdown", "phase3Steps", "verdictShort", "finalVerdictMarkdown"]
+};
 
-    let fullText = '';
-    let chunkCount = 0;
-
-    for await (const chunk of responseStream) {
-        chunkCount++;
-        const text = chunk.text;
-        if (text) {
-            fullText += text;
-        }
-    }
-    
-    console.log(`[Gemini] Stream complete. Chunks: ${chunkCount}. Total Length: ${fullText.length}`);
-
-    if (!fullText) {
-        throw new Error(`Received empty response from ${modelName}`);
-    }
-    return fullText;
-}
-
-// Helper for Fallback (Non-Streaming/Unary)
-// Useful when Service Workers or Proxies block SSE streams
-async function performGeminiAuditUnary(ai: GoogleGenAI, modelName: string, prompt: string): Promise<string> {
-    console.log(`[Gemini] Starting UNARY (Non-Streaming) request with model: ${modelName}`);
+// Helper to perform the actual generation call (Unary with Schema)
+async function performGeminiAudit(ai: GoogleGenAI, modelName: string, prompt: string): Promise<any> {
+    console.log(`[Gemini] Starting structured audit with model: ${modelName}`);
     
     const response = await ai.models.generateContent({
         model: modelName,
         contents: prompt,
         config: {
             systemInstruction: SYSTEM_INSTRUCTION,
-            temperature: 0.7, 
+            temperature: 0.7,
+            responseMimeType: "application/json",
+            responseSchema: AUDIT_SCHEMA
         }
     });
 
     const text = response.text;
-    if (!text) throw new Error("Received empty response in unary mode");
-    return text;
+    if (!text) throw new Error("Received empty response");
+    
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        console.error("Failed to parse JSON response", e);
+        throw new Error("Invalid JSON returned from model");
+    }
 }
 
 export const runAudit = async (repoUrl: string, codeContext: string): Promise<AuditResult> => {
@@ -142,70 +115,40 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
   1. **Commit History Check**: Look at the provided commit log. Are there many "fix" or "wip" commits? Is it a solo dev?
   2. **File Tree Check**: Is it well structured or a flat mess?
   3. **Code Intelligence Check**: Look at the [ACTUAL SOURCE CODE SAMPLES] section. Read the code. Is it smart? Does it use advanced types/patterns? Or is it beginner level?
-  4. **Date Awareness**: Today is November 2025. If the last commit was early 2025 or 2024, that is RECENT. Do not mark it as abandoned unless it is years old.
+  4. **Date Awareness**: Today is November 2025.
   
   Execute the SUPER PROMPT: The Reality Check & Vibe Audit Protocol.
-  Be hyper-critical. Assume guilt until proven innocent.
+  Fill the JSON schema completely.
   `;
 
-  let fullText = '';
-  let modelUsed = 'gemini-3-pro-preview';
+  let jsonResult: any = null;
+  let modelUsed = 'gemini-2.5-flash';
 
   try {
-    // Attempt 1: Gemini 3.0 Pro (Streaming)
-    // Best Quality, but sensitive to network timeouts
+    // Attempt 1: Gemini 3.0 Pro Preview (Smarter, Supports Schema)
     try {
-        fullText = await performGeminiAudit(ai, 'gemini-3-pro-preview', prompt);
+        modelUsed = 'gemini-3-pro-preview';
+        jsonResult = await performGeminiAudit(ai, 'gemini-3-pro-preview', prompt);
     } catch (primaryError) {
-        console.warn("[Gemini] Primary Model (Pro Stream) Failed. Attempting Flash Stream.", primaryError);
+        console.warn("[Gemini] Primary Model Failed. Attempting Flash.", primaryError);
         
-        // Attempt 2: Gemini 2.5 Flash (Streaming)
-        // Faster, usually more reliable
-        try {
-            modelUsed = 'gemini-2.5-flash';
-            fullText = await performGeminiAudit(ai, 'gemini-2.5-flash', prompt);
-        } catch (secondaryError) {
-             console.warn("[Gemini] Secondary Model (Flash Stream) Failed. Attempting Flash Unary (Safe Mode).", secondaryError);
-             
-             // Attempt 3: Gemini 2.5 Flash (Unary / No Stream)
-             // Bulletproof fallback if streams are blocked by proxies/SW
-             modelUsed = 'gemini-2.5-flash (Safe Mode)';
-             fullText = await performGeminiAuditUnary(ai, 'gemini-2.5-flash', prompt);
-        }
+        // Attempt 2: Gemini 2.5 Flash (Faster, Reliable Schema)
+        modelUsed = 'gemini-2.5-flash';
+        jsonResult = await performGeminiAudit(ai, 'gemini-2.5-flash', prompt);
     }
 
-    // Extract JSON block from the end
-    const jsonMatch = fullText.match(/```json\n([\s\S]*?)\n```/);
-    let scores: AuditScores | null = null;
-    let verdict = "Analysis Failed";
-    let cleanMarkdown = fullText;
-
-    if (jsonMatch) {
-      try {
-        const jsonRaw = jsonMatch[1];
-        const parsed = JSON.parse(jsonRaw);
-        scores = {
-          architecture: parsed.architecture || 0,
-          core: parsed.core || 0,
-          performance: parsed.performance || 0,
-          security: parsed.security || 0,
-          qa: parsed.qa || 0,
-          total: parsed.total || 0,
-        };
-        verdict = parsed.verdict_short || "Audit Complete";
-        
-        // Remove the JSON block from the display markdown
-        cleanMarkdown = fullText.replace(jsonMatch[0], '').trim();
-      } catch (e) {
-        console.error("Failed to parse score JSON", e);
-      }
+    if (!jsonResult || !jsonResult.scores) {
+        throw new Error("Incomplete data received from audit.");
     }
 
     return {
-      markdownReport: cleanMarkdown,
-      scores,
       repoName: repoUrl.split('/').pop() || "Repository",
-      verdict,
+      verdictShort: jsonResult.verdictShort || "Audit Failed",
+      finalVerdictContent: jsonResult.finalVerdictMarkdown || "",
+      phase1: jsonResult.phase1 || [],
+      phase2Content: jsonResult.phase2Markdown || "",
+      phase3Plans: jsonResult.phase3Steps || [],
+      scores: jsonResult.scores,
       modelUsed
     };
 

@@ -1,121 +1,13 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Download, AlertTriangle, Terminal, Code, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw, Printer, ArrowRight, CheckCircle, XCircle, AlertCircle, Cpu } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw, Printer, Cpu } from 'lucide-react';
 import { AppState, AuditResult } from './types';
 import { runAudit } from './services/geminiService';
 import { fetchGitHubRepoData, formatContext } from './services/githubService';
 import { TerminalOutput } from './components/TerminalOutput';
 import { AuditDashboard } from './components/AuditDashboard';
-
-// --- Report Parsing Helpers ---
-
-const parseReport = (markdown: string) => {
-  const sections = {
-    phase1: "",
-    phase2: "",
-    phase3: "",
-    verdict: "",
-  };
-
-  const phase1Match = markdown.match(/## 📊 PHASE 1: THE 20-POINT MATRIX([\s\S]*?)(?=## 📉 PHASE 2)/);
-  const phase2Match = markdown.match(/## 📉 PHASE 2: THE SCORES([\s\S]*?)(?=## 🛠️ PHASE 3)/);
-  const phase3Match = markdown.match(/## 🛠️ PHASE 3: THE PARETO FIX PLAN([\s\S]*?)(?=## 🔥 FINAL VERDICT)/);
-  const verdictMatch = markdown.match(/## 🔥 FINAL VERDICT([\s\S]*?)$/);
-
-  if (phase1Match) sections.phase1 = phase1Match[1].trim();
-  if (phase2Match) sections.phase2 = phase2Match[1].trim();
-  if (phase3Match) sections.phase3 = phase3Match[1].trim();
-  if (verdictMatch) sections.verdict = verdictMatch[1].trim();
-
-  const isParsed = !!phase1Match;
-  return { sections, isParsed };
-};
-
-// --- Specialized Components for Better Readability ---
-
-const Phase1Card: React.FC<{ title: string; items: string[] }> = ({ title, items }) => {
-    return (
-        <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-5 hover:border-gray-700 transition-all break-inside-avoid print:bg-white print:border-black">
-            <h4 className="text-terminal-green font-mono font-bold text-lg mb-4 border-b border-gray-800 pb-2 print:text-black print:border-black">
-                {title.replace('### ', '').trim()}
-            </h4>
-            <div className="space-y-4">
-                {items.map((item, idx) => {
-                    // Try to extract score [x/5]
-                    const scoreMatch = item.match(/\*\*\[(\d)\/5\](.*?)\*\*:(.*)/);
-                    if (scoreMatch) {
-                        const score = parseInt(scoreMatch[1]);
-                        const metric = scoreMatch[2];
-                        const desc = scoreMatch[3];
-                        
-                        let dotColor = "bg-gray-600";
-                        if (score >= 4) dotColor = "bg-terminal-green";
-                        else if (score >= 2) dotColor = "bg-terminal-amber";
-                        else dotColor = "bg-terminal-red";
-
-                        return (
-                            <div key={idx} className="text-sm">
-                                <div className="flex items-start gap-3">
-                                    <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${dotColor} print:border print:border-black`}></div>
-                                    <div>
-                                        <span className="font-mono font-bold text-gray-200 print:text-black">{metric}</span>
-                                        <span className="text-gray-500 font-mono text-xs ml-2 print:text-gray-600">[{score}/5]</span>
-                                        <p className="text-gray-400 mt-1 leading-relaxed print:text-black">{desc}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    }
-                    // Fallback
-                    return <div key={idx} className="text-sm text-gray-400 print:text-black"><ReactMarkdown>{item}</ReactMarkdown></div>
-                })}
-            </div>
-        </div>
-    )
-}
-
-const Phase1Grid: React.FC<{ content: string }> = ({ content }) => {
-  const sections = content.split(/(?=### )/g).filter(s => s.trim().length > 0);
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-      {sections.map((section, idx) => {
-         const lines = section.split('\n').filter(l => l.trim().length > 0);
-         const title = lines[0];
-         const items = lines.slice(1).join('\n').split(/(?=\d\. \*\*)/g).filter(s => s.trim().length > 0);
-         
-         if (items.length === 0) return null;
-
-         return <Phase1Card key={idx} title={title} items={items} />;
-      })}
-    </div>
-  );
-};
-
-const FixPlanList: React.FC<{ content: string }> = ({ content }) => {
-    // Split by numbered list "1. ", "2. " etc
-    const items = content.split(/\n(?=\d+\.)/).filter(s => s.trim().length > 0);
-
-    return (
-        <div className="space-y-3">
-            {items.map((item, idx) => {
-                const cleanItem = item.replace(/^\d+\.\s*/, '');
-                return (
-                    <div key={idx} className="flex gap-4 p-4 bg-black/40 border border-gray-800 rounded-lg hover:bg-gray-900/40 transition-colors print:bg-white print:border-black">
-                        <div className="flex-shrink-0 pt-1">
-                            <div className="w-6 h-6 rounded border border-gray-700 flex items-center justify-center text-xs font-mono text-gray-500 print:border-black print:text-black">
-                                {idx + 1}
-                            </div>
-                        </div>
-                        <div className="prose prose-invert prose-sm max-w-none print:prose-black">
-                             <ReactMarkdown>{cleanItem}</ReactMarkdown>
-                        </div>
-                    </div>
-                )
-            })}
-        </div>
-    );
-};
+import { Phase1Matrix } from './components/Phase1Matrix';
+import { ParetoFixPlan } from './components/ParetoFixPlan';
 
 // --- Main App ---
 
@@ -127,7 +19,7 @@ const App: React.FC = () => {
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>("");
 
   const handleAudit = async () => {
     if (!repoUrl) {
@@ -139,9 +31,14 @@ const App: React.FC = () => {
     let auditContext = fetchedContext;
 
     if (!auditContext) {
-      setIsFetching(true);
+      setLoadingStatus("Connecting to GitHub API...");
+      setState(AppState.ANALYZING); // Start loading UI immediately
+      
       try {
+        setLoadingStatus("Fetching Repo Metadata...");
         const data = await fetchGitHubRepoData(repoUrl, ghToken);
+        
+        setLoadingStatus("Processing File Tree & Commits...");
         auditContext = formatContext(data);
         setFetchedContext(auditContext);
       } catch (e: any) {
@@ -153,27 +50,55 @@ const App: React.FC = () => {
             setShowAdvanced(true);
         }
         
-        setIsFetching(false);
+        setState(AppState.IDLE);
+        setLoadingStatus("");
         return;
       }
-      setIsFetching(false);
     }
 
+    setLoadingStatus("Initiating Gemini Audit Protocol...");
     setState(AppState.ANALYZING);
+
     try {
+      setLoadingStatus("Analyzing Code Quality...");
       const data = await runAudit(repoUrl, auditContext);
+      setLoadingStatus("Finalizing Report...");
       setResult(data);
       setState(AppState.COMPLETE);
     } catch (e: any) {
       setState(AppState.ERROR);
-      // Display the actual error message (e.g., API Key invalid, Quota exceeded)
       setError(`Audit failed: ${e.message || "Unknown error occurred"}`);
+    } finally {
+      setLoadingStatus("");
     }
   };
 
   const handleDownload = () => {
     if (!result) return;
-    const blob = new Blob([result.markdownReport], { type: 'text/markdown' });
+    
+    // Construct a markdown string from the structured data for download
+    let md = `# BRUTAL AUDIT REPORT: ${result.repoName}\n\n`;
+    md += `## VERDICT\n${result.verdictShort}\n\n`;
+    md += `## SCORE: ${result.scores.total}/100\n\n`;
+    md += `${result.finalVerdictContent}\n\n`;
+    
+    md += `## PHASE 1: THE MATRIX\n`;
+    result.phase1.forEach(cat => {
+        md += `### ${cat.title}\n`;
+        cat.items.forEach(item => {
+            md += `- **[${item.score}/5] ${item.label}**: ${item.description}\n`;
+        });
+        md += `\n`;
+    });
+
+    md += `## PHASE 2: VIBE CHECK\n${result.phase2Content}\n\n`;
+    
+    md += `## PHASE 3: FIX PLAN\n`;
+    result.phase3Plans.forEach((step, i) => {
+        md += `${i+1}. ${step}\n`;
+    });
+
+    const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -194,9 +119,8 @@ const App: React.FC = () => {
     setRepoUrl('');
     setResult(null);
     setError(null);
+    setLoadingStatus("");
   };
-
-  const parsedReport = result ? parseReport(result.markdownReport) : null;
 
   return (
     <div className="min-h-screen bg-terminal-black text-gray-300 font-sans selection:bg-terminal-red selection:text-white pb-20 print:bg-white print:text-black print:pb-0">
@@ -209,7 +133,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white font-mono">BRUTAL REP AUDITOR</h1>
-              <p className="text-xs text-gray-500 font-mono">V2.3 // DEEP SCAN PROTOCOL</p>
+              <p className="text-xs text-gray-500 font-mono">V2.4 // DEEP SCAN PROTOCOL</p>
             </div>
           </div>
           <div className="text-xs font-mono text-gray-500 border border-gray-800 px-3 py-1 rounded-full">
@@ -290,7 +214,7 @@ const App: React.FC = () => {
                                 <label className="block text-xs font-mono text-gray-500">AUDIT CONTEXT PREVIEW</label>
                             </div>
                             <div className="relative">
-                                <Code className="absolute left-3 top-3 w-5 h-5 text-gray-600" />
+                                <FileText className="absolute left-3 top-3 w-5 h-5 text-gray-600" />
                                 <textarea
                                     value={fetchedContext}
                                     readOnly={true}
@@ -313,15 +237,13 @@ const App: React.FC = () => {
 
             <button
               onClick={handleAudit}
-              disabled={state === AppState.ANALYZING || isFetching}
+              disabled={state === AppState.ANALYZING}
               className="w-full py-4 bg-white text-black font-bold font-mono text-lg rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
             >
-              {isFetching ? (
+              {state === AppState.ANALYZING ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" /> FETCHING REPO DATA...
+                    <Loader2 className="w-5 h-5 animate-spin" /> {loadingStatus || "PROCESSING..."}
                   </>
-              ) : state === AppState.ANALYZING ? (
-                <>PROCESSING...</>
               ) : (
                 <>INITIATE BRUTAL AUDIT <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse ml-2"></div></>
               )}
@@ -331,12 +253,12 @@ const App: React.FC = () => {
 
         {state === AppState.ANALYZING && (
           <div className="mt-8 print:hidden max-w-3xl mx-auto">
-            <TerminalOutput />
+            <TerminalOutput status={loadingStatus} />
           </div>
         )}
 
         {/* RESULTS VIEW */}
-        {state === AppState.COMPLETE && result && parsedReport && (
+        {state === AppState.COMPLETE && result && (
           <div className="mt-8 animate-fade-in-up">
             
             {/* ACTION BAR - Hidden in Print */}
@@ -378,7 +300,7 @@ const App: React.FC = () => {
                 <h1 className="text-3xl font-bold font-mono text-black">BRUTAL REP AUDITOR REPORT</h1>
                 <p className="text-sm font-mono text-gray-600">Generated: {new Date().toLocaleDateString()}</p>
                 <p className="text-sm font-mono text-gray-600">Repo: {result.repoName}</p>
-                <p className="text-lg font-bold mt-2 text-black">Verdict: {result.verdict}</p>
+                <p className="text-lg font-bold mt-2 text-black">Verdict: {result.verdictShort}</p>
                 <p className="text-xs font-mono mt-1 text-gray-500">Model: {result.modelUsed}</p>
             </div>
 
@@ -395,18 +317,18 @@ const App: React.FC = () => {
                         </div>
                         <h3 className="text-gray-500 font-mono uppercase text-xs mb-3 tracking-[0.2em] print:text-gray-600">Executive Summary</h3>
                         <p className="text-2xl md:text-3xl font-bold text-white leading-tight font-sans italic mb-6 print:text-black">
-                            "{result.verdict}"
+                            "{result.verdictShort}"
                         </p>
                         <div className="mt-auto pt-6 border-t border-gray-800 print:border-black">
                              <div className="prose prose-invert prose-sm max-w-none text-gray-400 print:prose-black">
-                                <ReactMarkdown>{parsedReport.sections.verdict}</ReactMarkdown>
+                                <ReactMarkdown>{result.finalVerdictContent}</ReactMarkdown>
                              </div>
                         </div>
                     </div>
 
                     {/* Chart Dashboard */}
                     <div className="print:break-inside-avoid">
-                         {result.scores && <AuditDashboard scores={result.scores} />}
+                         <AuditDashboard scores={result.scores} />
                     </div>
                 </div>
 
@@ -419,13 +341,7 @@ const App: React.FC = () => {
                              <p className="text-xs text-gray-500 font-mono">20-POINT DEEP DIVE ANALYSIS</p>
                         </div>
                     </div>
-                    {parsedReport.isParsed ? (
-                        <Phase1Grid content={parsedReport.sections.phase1} />
-                    ) : (
-                        <div className="bg-gray-900/50 p-6 rounded border border-gray-800 print:bg-white print:border-black">
-                             <ReactMarkdown className="prose prose-invert max-w-none print:prose-black">{result.markdownReport}</ReactMarkdown>
-                        </div>
-                    )}
+                    <Phase1Matrix categories={result.phase1} />
                 </section>
 
                 {/* 3. PHASE 2: SCORES DETAIL */}
@@ -435,7 +351,7 @@ const App: React.FC = () => {
                         <h2 className="text-xl font-bold font-mono text-white print:text-black">PHASE 2: VIBE CHECK & PENALTIES</h2>
                     </div>
                      <div className="prose prose-invert max-w-none text-gray-300 print:prose-black">
-                        <ReactMarkdown>{parsedReport.sections.phase2}</ReactMarkdown>
+                        <ReactMarkdown>{result.phase2Content}</ReactMarkdown>
                     </div>
                 </section>
 
@@ -448,7 +364,7 @@ const App: React.FC = () => {
                             <p className="text-xs text-gray-500 font-mono">PRIORITIZED REMEDIATION STEPS</p>
                         </div>
                     </div>
-                    <FixPlanList content={parsedReport.sections.phase3} />
+                    <ParetoFixPlan steps={result.phase3Plans} />
                 </section>
 
             </div>
