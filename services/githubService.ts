@@ -4,6 +4,7 @@ interface GitHubRepoData {
     readme: string;
     commits: string;
     criticalFiles: string;
+    sourceSamples: string;
 }
 
 export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Promise<GitHubRepoData> => {
@@ -45,49 +46,73 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
         // 3. Fetch Commits (simulate git log)
         let commits = "";
         try {
-            const commitsData = await fetchData(`${baseUrl}/commits?per_page=15`);
+            const commitsData = await fetchData(`${baseUrl}/commits?per_page=20`); // Increased to 20
             commits = commitsData.map((c: any) => {
                 const msg = c.commit.message.split('\n')[0]; // First line only
-                const date = c.commit.author.date;
+                const date = c.commit.author.date.split('T')[0];
                 const author = c.commit.author.name;
                 const sha = c.sha.substring(0, 7);
-                return `${sha} ${date} [${author}] ${msg}`;
+                // Check if verified (proxy for quality sometimes)
+                const verified = c.commit.verification?.verified ? " [Verified]" : "";
+                return `${sha} ${date} [${author}]${verified}: ${msg}`;
             }).join('\n');
         } catch (e) {
             commits = "[Could not fetch commits]";
         }
 
-        // 4. Fetch File Tree (Recursive to depth 2 roughly, or just root)
-        // Using the Git Data API to get a tree is more efficient than contents
-        // First get default branch ref
+        // 4. Fetch File Tree (Recursive)
         let fileTree = "";
         let criticalFiles = "";
+        let sourceSamples = "";
         
         try {
             const repoData = await fetchData(baseUrl);
             const defaultBranch = repoData.default_branch;
             const treeData = await fetchData(`${baseUrl}/git/trees/${defaultBranch}?recursive=1`);
             
-            // Limit tree size for LLM context
-            const files = treeData.tree
-                .filter((f: any) => f.type === 'blob')
-                .map((f: any) => f.path);
+            const allFiles = treeData.tree.filter((f: any) => f.type === 'blob');
             
-            fileTree = files.slice(0, 300).join('\n');
-            if (files.length > 300) fileTree += `\n... (${files.length - 300} more files)`;
+            // Limit tree size for LLM context
+            const filePaths = allFiles.map((f: any) => f.path);
+            fileTree = filePaths.slice(0, 300).join('\n');
+            if (filePaths.length > 300) fileTree += `\n... (${filePaths.length - 300} more files)`;
 
             // 5. Fetch Content of Critical Files (Manifests)
-            // Heuristic for "Critical Files"
-            const criticalPatterns = ['package.json', 'Cargo.toml', 'go.mod', 'requirements.txt', 'pom.xml', 'docker-compose.yml', 'Dockerfile'];
-            const foundCritical = files.filter((f: string) => criticalPatterns.includes(f.split('/').pop() || ''));
+            const criticalPatterns = ['package.json', 'Cargo.toml', 'go.mod', 'requirements.txt', 'pom.xml', 'docker-compose.yml', 'Dockerfile', 'Makefile'];
+            const foundCritical = filePaths.filter((f: string) => criticalPatterns.includes(f.split('/').pop() || ''));
 
-            for (const path of foundCritical.slice(0, 3)) { // Limit to 3 manifests
+            for (const path of foundCritical.slice(0, 3)) { 
                 try {
                     const contentData = await fetchData(`${baseUrl}/contents/${path}`);
                     const content = atob(contentData.content);
                     criticalFiles += `\n--- ${path} ---\n${content}\n`;
                 } catch (e) {
-                    // Ignore download errors for individual files
+                    // Ignore download errors
+                }
+            }
+
+            // 6. Source Code Intelligence Sampling
+            // Find "meaty" source files (not too small, not too huge) to judge coding intelligence
+            const sourceExtensions = ['.ts', '.tsx', '.js', '.jsx', '.rs', '.go', '.py', '.rb', '.java', '.cpp', '.c', '.h', '.swift', '.kt', '.php'];
+            const potentialSources = allFiles.filter((f: any) => {
+                const ext = '.' + f.path.split('.').pop();
+                // Filter by extension and size (1KB - 50KB) to avoid minified files or empty files
+                return sourceExtensions.includes(ext) && f.size > 1000 && f.size < 50000;
+            });
+
+            // Sort by size descending to get complex files, take top 2
+            potentialSources.sort((a: any, b: any) => b.size - a.size);
+            const selectedSources = potentialSources.slice(0, 2);
+
+            for (const file of selectedSources) {
+                try {
+                    const contentData = await fetchData(`${baseUrl}/contents/${file.path}`);
+                    const content = atob(contentData.content);
+                    // Truncate if too long (max 200 lines)
+                    const lines = content.split('\n').slice(0, 200).join('\n');
+                    sourceSamples += `\n--- SOURCE SAMPLE: ${file.path} ---\n${lines}\n...(truncated)\n`;
+                } catch (e) {
+                    // Ignore
                 }
             }
 
@@ -99,7 +124,8 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
             readme,
             commits,
             fileTree,
-            criticalFiles
+            criticalFiles,
+            sourceSamples
         };
 
     } catch (error) {
@@ -113,11 +139,14 @@ export const formatContext = (data: GitHubRepoData): string => {
 === REPOSITORY FILE TREE ===
 ${data.fileTree}
 
-=== RECENT COMMIT HISTORY (git log --oneline) ===
+=== RECENT COMMIT HISTORY ===
 ${data.commits}
 
 === CRITICAL DEPENDENCY FILES ===
 ${data.criticalFiles}
+
+=== SOURCE CODE SAMPLING (FOR INTELLIGENCE CHECK) ===
+${data.sourceSamples}
 
 === README.md ===
 ${data.readme}

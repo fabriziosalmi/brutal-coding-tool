@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 
 const MESSAGES = [
     "Initializing heuristic scanners...",
     "Cloning repository metadata...",
-    "Detecting AI-generated slop...",
-    "Analyzing dependency bloat...",
+    "Extracting source code intelligence...",
+    "Analyzing commit history for 'wip' spam...",
     "Checking for stack overflow copy-pastes...",
     "Running vibe check...",
     "Identifying happy path programming...",
