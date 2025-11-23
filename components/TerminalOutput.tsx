@@ -7,6 +7,7 @@ const MESSAGES = [
     "Extracting source code intelligence...",
     "Analyzing commit history for 'wip' spam...",
     "Checking for stack overflow copy-pastes...",
+    "Sampling algorithmic depth...",
     "Running vibe check...",
     "Identifying happy path programming...",
     "Searching for hardcoded secrets...",
@@ -22,12 +23,17 @@ export const TerminalOutput: React.FC = () => {
     useEffect(() => {
         let index = 0;
         const interval = setInterval(() => {
-            if (index < MESSAGES.length) {
-                setLines(prev => [...prev.slice(-6), `> ${MESSAGES[index]}`]);
-                index++;
-            } else {
+            // Safety check: if index exceeds bounds, stop
+            if (index >= MESSAGES.length) {
                 clearInterval(interval);
+                return;
             }
+
+            const message = MESSAGES[index];
+            if (message) {
+                setLines(prev => [...prev.slice(-6), `> ${message}`]);
+            }
+            index++;
         }, 800);
         return () => clearInterval(interval);
     }, []);

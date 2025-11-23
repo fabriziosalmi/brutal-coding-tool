@@ -7,9 +7,34 @@ interface GitHubRepoData {
     sourceSamples: string;
 }
 
+export const formatContext = (data: GitHubRepoData): string => {
+    return `
+    REPO CONTEXT:
+
+    [README]
+    ${data.readme}
+
+    [COMMITS (Latest 20)]
+    ${data.commits}
+
+    [FILE TREE]
+    ${data.fileTree}
+
+    [CRITICAL CONFIG FILES]
+    ${data.criticalFiles}
+
+    [ACTUAL SOURCE CODE SAMPLES (FOR INTELLIGENCE CHECK)]
+    ${data.sourceSamples}
+    `;
+};
+
 export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Promise<GitHubRepoData> => {
     // 1. Parse URL
-    const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+    // Handle trailing slashes and extract owner/repo
+    const cleanUrl = repoUrl.trim().replace(/\/$/, '');
+    // Regex now handles standard github.com URLs more robustly
+    const match = cleanUrl.match(/github\.com\/([^\/]+)\/([^\/?#]+)/);
+    
     if (!match) {
         throw new Error("Invalid GitHub URL. Format: https://github.com/owner/repo");
     }
@@ -44,9 +69,10 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
         }
 
         // 3. Fetch Commits (simulate git log)
+        // Fetched 20 to analyze patterns better
         let commits = "";
         try {
-            const commitsData = await fetchData(`${baseUrl}/commits?per_page=20`); // Increased to 20
+            const commitsData = await fetchData(`${baseUrl}/commits?per_page=20`);
             commits = commitsData.map((c: any) => {
                 const msg = c.commit.message.split('\n')[0]; // First line only
                 const date = c.commit.author.date.split('T')[0];
@@ -132,23 +158,4 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
         console.error("GitHub Fetch Error", error);
         throw error;
     }
-};
-
-export const formatContext = (data: GitHubRepoData): string => {
-    return `
-=== REPOSITORY FILE TREE ===
-${data.fileTree}
-
-=== RECENT COMMIT HISTORY ===
-${data.commits}
-
-=== CRITICAL DEPENDENCY FILES ===
-${data.criticalFiles}
-
-=== SOURCE CODE SAMPLING (FOR INTELLIGENCE CHECK) ===
-${data.sourceSamples}
-
-=== README.md ===
-${data.readme}
-    `.trim();
 };
