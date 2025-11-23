@@ -98,17 +98,31 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
   Be hyper-critical. Assume guilt until proven innocent.
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.7, 
-      }
-    });
+  // Retry Logic for Network Stability
+  const attemptGeneration = async (retriesLeft: number = 1): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              temperature: 0.7, 
+            }
+          });
+          return response.text || "";
+    } catch (error) {
+        console.warn(`Generation attempt failed. Retries left: ${retriesLeft}`, error);
+        if (retriesLeft > 0) {
+            // Wait 2 seconds before retry
+            await new Promise(r => setTimeout(r, 2000));
+            return attemptGeneration(retriesLeft - 1);
+        }
+        throw error;
+    }
+  };
 
-    const text = response.text || "";
+  try {
+    const text = await attemptGeneration();
 
     // Extract JSON block from the end
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);

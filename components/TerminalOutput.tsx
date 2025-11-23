@@ -17,8 +17,17 @@ const MESSAGES = [
     "Synthesizing vibe check scores...", 
     "Drafting Pareto Fix Plan...", 
     "Verifying architectural consistency...",
-    "Formatting final brutal verdict...",
-    "Generating report markdown..." 
+    // Extended Finalizing Phase for Gemini 3.0 Pro Latency
+    "Structuring final report...",
+    "Applying ruthless filters...",
+    "Calibrating verdict severity...",
+    "Generating score visualizations...",
+    "Cross-referencing best practices...",
+    "Detecting AI-generated comments...",
+    "Validating dependency tree...",
+    "Formatting markdown output...",
+    "Finalizing brutal verdict...",
+    "Wrapping up analysis..."
 ];
 
 const OVERTIME_MESSAGES = [
@@ -26,10 +35,12 @@ const OVERTIME_MESSAGES = [
     "Refining score calculations...",
     "Polishing output format...",
     "Double-checking logic consistency...",
+    "Still processing... complexity is high...",
+    "Ensuring maximum brutality...",
     "Almost there..."
 ];
 
-const STEP_DURATION = 1200; // 1.2s per step
+const STEP_DURATION = 1500; // 1.5s per step to stretch it out to ~45s
 
 export const TerminalOutput: React.FC = () => {
     const [lines, setLines] = useState<string[]>([]);
@@ -49,13 +60,10 @@ export const TerminalOutput: React.FC = () => {
         if (stepIndex < MESSAGES.length) {
             message = MESSAGES[stepIndex];
         } else {
-            // Overtime logic: Show a keep-alive message every 2 ticks (approx 2.4s)
-            // to avoid spamming the log but keep it alive.
+            // Overtime logic: Show a keep-alive message every cycle
             const overtimeIndex = stepIndex - MESSAGES.length;
-            if (overtimeIndex % 2 === 0) {
-                const msgIndex = (overtimeIndex / 2) % OVERTIME_MESSAGES.length;
-                message = OVERTIME_MESSAGES[msgIndex];
-            }
+            const msgIndex = overtimeIndex % OVERTIME_MESSAGES.length;
+            message = OVERTIME_MESSAGES[msgIndex];
         }
 
         if (message) {
@@ -64,16 +72,21 @@ export const TerminalOutput: React.FC = () => {
     }, [stepIndex]);
 
     // Progress Calculation
-    // We cap it at 98% if we go into overtime until the parent component unmounts this.
-    const rawProgress = ((stepIndex + 1) / MESSAGES.length) * 100;
-    const progress = Math.min(rawProgress, stepIndex >= MESSAGES.length ? 99 : 100);
+    // We cap it at 99% if we go into overtime until the parent component unmounts this.
+    // We map the main MESSAGES to 90%, and overtime creeps to 99%
+    const isOvertime = stepIndex >= MESSAGES.length;
+    const standardProgress = ((stepIndex + 1) / MESSAGES.length) * 90;
+    
+    // Slow creep during overtime
+    const overtimeProgress = 90 + Math.min(9, (stepIndex - MESSAGES.length) * 0.5);
+    
+    const progress = Math.min(isOvertime ? overtimeProgress : standardProgress, 99);
     
     // ETA Calculation
-    // If inside normal steps, calculate remaining. If overtime, just show generic.
     const remainingSteps = Math.max(0, MESSAGES.length - stepIndex);
     const eta = remainingSteps > 0 
         ? (remainingSteps * (STEP_DURATION / 1000)).toFixed(0) 
-        : "CALCULATING";
+        : "WAITING FOR API";
 
     return (
         <div className="w-full font-mono text-sm bg-black border border-gray-800 p-6 rounded-xl shadow-[0_0_30px_rgba(0,255,65,0.05)] relative overflow-hidden">
@@ -103,8 +116,8 @@ export const TerminalOutput: React.FC = () => {
             {/* Progress Bar */}
             <div className="space-y-2">
                 <div className="flex justify-between text-xs text-gray-500 font-mono">
-                    <span>PHASE: {stepIndex < MESSAGES.length ? "PROCESSING" : "FINALIZING"}</span>
-                    <span>EST. REMAINING: {eta === "CALCULATING" ? "..." : `${eta}s`}</span>
+                    <span>PHASE: {isOvertime ? "FINALIZING (LATENCY DETECTED)" : "PROCESSING"}</span>
+                    <span>EST. REMAINING: {eta === "WAITING FOR API" ? "..." : `${eta}s`}</span>
                 </div>
                 <div className="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden border border-gray-800/50">
                     <div 
@@ -113,7 +126,7 @@ export const TerminalOutput: React.FC = () => {
                     ></div>
                 </div>
                 <div className="flex justify-between text-[10px] text-gray-700 font-mono pt-1">
-                    <span>STEP {Math.min(stepIndex + 1, MESSAGES.length + (stepIndex >= MESSAGES.length ? 1 : 0))}/{MESSAGES.length}</span>
+                    <span>STEP {stepIndex + 1}/{MESSAGES.length}+</span>
                     <span>THREADS: {Math.floor(Math.random() * 4) + 4} ACTIVE</span>
                 </div>
             </div>
