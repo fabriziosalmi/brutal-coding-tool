@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Download, AlertTriangle, Terminal, Code, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Download, AlertTriangle, Terminal, Code, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react';
 import { AppState, AuditResult } from './types';
 import { runAudit } from './services/geminiService';
 import { fetchGitHubRepoData, formatContext } from './services/githubService';
@@ -233,7 +233,7 @@ const App: React.FC = () => {
                     <p className="text-2xl md:text-3xl font-bold text-white leading-tight font-sans">
                         "{result.verdict}"
                     </p>
-                    <div className="mt-6 flex gap-4">
+                    <div className="mt-6 flex flex-wrap gap-4">
                          <button 
                             onClick={handleDownload}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded font-mono text-sm border border-gray-700 transition-all"
@@ -243,9 +243,10 @@ const App: React.FC = () => {
                         </button>
                         <button 
                             onClick={handleReset}
-                            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white font-mono text-sm transition-all"
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white border border-gray-700 hover:border-terminal-red rounded font-mono text-sm transition-all group"
                         >
-                            RESET
+                            <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform" />
+                            AUDIT ANOTHER REPO
                         </button>
                     </div>
                 </div>
