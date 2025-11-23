@@ -129,7 +129,7 @@ export const TerminalOutput: React.FC = () => {
                     ></div>
                 </div>
                 <div className="flex justify-between text-[10px] text-gray-700 font-mono pt-1">
-                    <span>STEP {stepIndex + 1}/{MESSAGES.length}+</span>
+                    <span>STEP {Math.min(stepIndex + 1, MESSAGES.length)}/{MESSAGES.length}</span>
                     <span>THREADS: {Math.floor(Math.random() * 4) + 4} ACTIVE</span>
                 </div>
             </div>
