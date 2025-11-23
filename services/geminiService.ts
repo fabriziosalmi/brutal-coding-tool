@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { AuditResult, AuditScores } from "../types";
 
 const SYSTEM_INSTRUCTION = `
@@ -98,37 +98,37 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
   Be hyper-critical. Assume guilt until proven innocent.
   `;
 
-  // Retry Logic for Network Stability
-  const attemptGeneration = async (retriesLeft: number = 1): Promise<string> => {
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-preview',
-            contents: prompt,
-            config: {
-              systemInstruction: SYSTEM_INSTRUCTION,
-              temperature: 0.7, 
-            }
-          });
-          return response.text || "";
-    } catch (error) {
-        console.warn(`Generation attempt failed. Retries left: ${retriesLeft}`, error);
-        if (retriesLeft > 0) {
-            // Wait 2 seconds before retry
-            await new Promise(r => setTimeout(r, 2000));
-            return attemptGeneration(retriesLeft - 1);
-        }
-        throw error;
-    }
-  };
-
   try {
-    const text = await attemptGeneration();
+    // Use generateContentStream to prevent timeout issues with Gemini 3.0 Pro
+    // This keeps the connection alive while the model is thinking/generating.
+    const responseStream = await ai.models.generateContentStream({
+        model: 'gemini-3-pro-preview',
+        contents: prompt,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          temperature: 0.7, 
+        }
+      });
+
+    let fullText = '';
+    
+    for await (const chunk of responseStream) {
+        // chunk is GenerateContentResponse
+        const text = chunk.text;
+        if (text) {
+            fullText += text;
+        }
+    }
+
+    if (!fullText) {
+        throw new Error("Received empty response from Gemini API.");
+    }
 
     // Extract JSON block from the end
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+    const jsonMatch = fullText.match(/```json\n([\s\S]*?)\n```/);
     let scores: AuditScores | null = null;
     let verdict = "Analysis Failed";
-    let cleanMarkdown = text;
+    let cleanMarkdown = fullText;
 
     if (jsonMatch) {
       try {
@@ -145,7 +145,7 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
         verdict = parsed.verdict_short || "Audit Complete";
         
         // Remove the JSON block from the display markdown
-        cleanMarkdown = text.replace(jsonMatch[0], '').trim();
+        cleanMarkdown = fullText.replace(jsonMatch[0], '').trim();
       } catch (e) {
         console.error("Failed to parse score JSON", e);
       }

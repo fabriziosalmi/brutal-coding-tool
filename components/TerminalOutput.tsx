@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 
 const MESSAGES = [
@@ -17,7 +18,10 @@ const MESSAGES = [
     "Synthesizing vibe check scores...", 
     "Drafting Pareto Fix Plan...", 
     "Verifying architectural consistency...",
-    // Extended Finalizing Phase for Gemini 3.0 Pro Latency
+    "Opening neural stream...",
+    "Receiving initial tokens...",
+    "Streaming raw insights...",
+    "Buffering brutal truths...",
     "Structuring final report...",
     "Applying ruthless filters...",
     "Calibrating verdict severity...",
@@ -31,16 +35,16 @@ const MESSAGES = [
 ];
 
 const OVERTIME_MESSAGES = [
-    "Deepening analysis of edge cases...",
+    "Still streaming data... heavy analysis detected...",
+    "Processing complex architectural patterns...",
+    "Gemini 3.0 Pro is thinking deeply...",
     "Refining score calculations...",
-    "Polishing output format...",
     "Double-checking logic consistency...",
-    "Still processing... complexity is high...",
     "Ensuring maximum brutality...",
-    "Almost there..."
+    "Almost there... parsing final chunks..."
 ];
 
-const STEP_DURATION = 1500; // 1.5s per step to stretch it out to ~45s
+const STEP_DURATION = 1200; // 1.2s per step to keep it moving
 
 export const TerminalOutput: React.FC = () => {
     const [lines, setLines] = useState<string[]>([]);
@@ -73,12 +77,11 @@ export const TerminalOutput: React.FC = () => {
 
     // Progress Calculation
     // We cap it at 99% if we go into overtime until the parent component unmounts this.
-    // We map the main MESSAGES to 90%, and overtime creeps to 99%
     const isOvertime = stepIndex >= MESSAGES.length;
-    const standardProgress = ((stepIndex + 1) / MESSAGES.length) * 90;
+    const standardProgress = ((stepIndex + 1) / MESSAGES.length) * 95;
     
     // Slow creep during overtime
-    const overtimeProgress = 90 + Math.min(9, (stepIndex - MESSAGES.length) * 0.5);
+    const overtimeProgress = 95 + Math.min(4, (stepIndex - MESSAGES.length) * 0.2);
     
     const progress = Math.min(isOvertime ? overtimeProgress : standardProgress, 99);
     
@@ -86,7 +89,7 @@ export const TerminalOutput: React.FC = () => {
     const remainingSteps = Math.max(0, MESSAGES.length - stepIndex);
     const eta = remainingSteps > 0 
         ? (remainingSteps * (STEP_DURATION / 1000)).toFixed(0) 
-        : "WAITING FOR API";
+        : "STREAMING";
 
     return (
         <div className="w-full font-mono text-sm bg-black border border-gray-800 p-6 rounded-xl shadow-[0_0_30px_rgba(0,255,65,0.05)] relative overflow-hidden">
@@ -116,8 +119,8 @@ export const TerminalOutput: React.FC = () => {
             {/* Progress Bar */}
             <div className="space-y-2">
                 <div className="flex justify-between text-xs text-gray-500 font-mono">
-                    <span>PHASE: {isOvertime ? "FINALIZING (LATENCY DETECTED)" : "PROCESSING"}</span>
-                    <span>EST. REMAINING: {eta === "WAITING FOR API" ? "..." : `${eta}s`}</span>
+                    <span>PHASE: {isOvertime ? "RECEIVING STREAM" : "PROCESSING"}</span>
+                    <span>EST. REMAINING: {eta === "STREAMING" ? "..." : `${eta}s`}</span>
                 </div>
                 <div className="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden border border-gray-800/50">
                     <div 
