@@ -75,7 +75,7 @@ IMPORTANT:
 }
 `;
 
-// Helper to perform the actual generation call
+// Helper to perform the actual generation call (Streaming)
 async function performGeminiAudit(ai: GoogleGenAI, modelName: string, prompt: string): Promise<string> {
     console.log(`[Gemini] Starting stream with model: ${modelName}`);
     
@@ -107,6 +107,25 @@ async function performGeminiAudit(ai: GoogleGenAI, modelName: string, prompt: st
     return fullText;
 }
 
+// Helper for Fallback (Non-Streaming/Unary)
+// Useful when Service Workers or Proxies block SSE streams
+async function performGeminiAuditUnary(ai: GoogleGenAI, modelName: string, prompt: string): Promise<string> {
+    console.log(`[Gemini] Starting UNARY (Non-Streaming) request with model: ${modelName}`);
+    
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            temperature: 0.7, 
+        }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("Received empty response in unary mode");
+    return text;
+}
+
 export const runAudit = async (repoUrl: string, codeContext: string): Promise<AuditResult> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key not found");
@@ -133,15 +152,26 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
   let modelUsed = 'gemini-3-pro-preview';
 
   try {
-    // Attempt 1: Gemini 3.0 Pro (Smart, but might time out or be flaky on streams in Cloud Run)
+    // Attempt 1: Gemini 3.0 Pro (Streaming)
+    // Best Quality, but sensitive to network timeouts
     try {
         fullText = await performGeminiAudit(ai, 'gemini-3-pro-preview', prompt);
     } catch (primaryError) {
-        console.warn("[Gemini] Primary Model (Pro) Failed. Attempting Fallback.", primaryError);
+        console.warn("[Gemini] Primary Model (Pro Stream) Failed. Attempting Flash Stream.", primaryError);
         
-        // Attempt 2: Gemini 2.5 Flash (Fast, reliable, cheaper)
-        modelUsed = 'gemini-2.5-flash';
-        fullText = await performGeminiAudit(ai, 'gemini-2.5-flash', prompt);
+        // Attempt 2: Gemini 2.5 Flash (Streaming)
+        // Faster, usually more reliable
+        try {
+            modelUsed = 'gemini-2.5-flash';
+            fullText = await performGeminiAudit(ai, 'gemini-2.5-flash', prompt);
+        } catch (secondaryError) {
+             console.warn("[Gemini] Secondary Model (Flash Stream) Failed. Attempting Flash Unary (Safe Mode).", secondaryError);
+             
+             // Attempt 3: Gemini 2.5 Flash (Unary / No Stream)
+             // Bulletproof fallback if streams are blocked by proxies/SW
+             modelUsed = 'gemini-2.5-flash (Safe Mode)';
+             fullText = await performGeminiAuditUnary(ai, 'gemini-2.5-flash', prompt);
+        }
     }
 
     // Extract JSON block from the end
