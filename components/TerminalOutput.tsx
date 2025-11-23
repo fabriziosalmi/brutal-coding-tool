@@ -30,6 +30,7 @@ export const TerminalOutput: React.FC = () => {
             }
 
             const message = MESSAGES[index];
+            // Ensure message exists before updating state to prevent "undefined"
             if (message) {
                 setLines(prev => [...prev.slice(-6), `> ${message}`]);
             }

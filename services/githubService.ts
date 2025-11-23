@@ -30,8 +30,9 @@ export const formatContext = (data: GitHubRepoData): string => {
 
 export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Promise<GitHubRepoData> => {
     // 1. Parse URL
-    // Handle trailing slashes and extract owner/repo
-    const cleanUrl = repoUrl.trim().replace(/\/$/, '');
+    // Handle trailing slashes (single or multiple) and whitespace
+    const cleanUrl = repoUrl.trim().replace(/\/+$/, '');
+    
     // Regex now handles standard github.com URLs more robustly
     const match = cleanUrl.match(/github\.com\/([^\/]+)\/([^\/?#]+)/);
     
@@ -53,7 +54,7 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
         if (!res.ok) {
             if (res.status === 403) throw new Error("GitHub API Rate Limit Exceeded. Please provide a Token.");
             if (res.status === 404) throw new Error("Repository not found or private.");
-            throw new Error(`GitHub API Error: ${res.statusText}`);
+            throw new Error(`GitHub API Error: ${res.status} ${res.statusText}`);
         }
         return res.json();
     };

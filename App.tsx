@@ -158,9 +158,10 @@ const App: React.FC = () => {
       const data = await runAudit(repoUrl, auditContext);
       setResult(data);
       setState(AppState.COMPLETE);
-    } catch (e) {
+    } catch (e: any) {
       setState(AppState.ERROR);
-      setError("Audit failed. The codebase might be too messy even for me.");
+      // Display the actual error message (e.g., API Key invalid, Quota exceeded)
+      setError(`Audit failed: ${e.message || "Unknown error occurred"}`);
     }
   };
 
