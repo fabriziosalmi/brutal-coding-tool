@@ -145,7 +145,14 @@ const App: React.FC = () => {
         auditContext = formatContext(data);
         setFetchedContext(auditContext);
       } catch (e: any) {
-        setError(e.message || "Failed to fetch repository data.");
+        const msg = e.message || "Failed to fetch repository data.";
+        setError(msg);
+        
+        // AUTO-OPEN Advanced Options if Rate Limit hit
+        if (msg.includes("403") || msg.includes("Rate Limit")) {
+            setShowAdvanced(true);
+        }
+        
         setIsFetching(false);
         return;
       }
@@ -202,7 +209,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white font-mono">BRUTAL REP AUDITOR</h1>
-              <p className="text-xs text-gray-500 font-mono">V2.2 // DEEP SCAN PROTOCOL</p>
+              <p className="text-xs text-gray-500 font-mono">V2.3 // DEEP SCAN PROTOCOL</p>
             </div>
           </div>
           <div className="text-xs font-mono text-gray-500 border border-gray-800 px-3 py-1 rounded-full">
@@ -262,15 +269,20 @@ const App: React.FC = () => {
                     <div className="grid gap-4 animate-fade-in">
                         <div>
                             <label className="block text-xs font-mono text-gray-500 mb-2 flex items-center gap-2">
-                                <Key className="w-3 h-3" /> GITHUB TOKEN (OPTIONAL - FOR HIGHER RATE LIMITS)
+                                <Key className="w-3 h-3" /> GITHUB TOKEN (REQUIRED FOR CLOUD/SHARED IPS)
                             </label>
                             <input
                                 type="password"
                                 value={ghToken}
                                 onChange={(e) => setGhToken(e.target.value)}
                                 placeholder="ghp_xxxxxxxxxxxx"
-                                className="w-full bg-black border border-gray-800 rounded px-3 py-2 text-sm text-gray-400 font-mono focus:border-gray-600 focus:outline-none"
+                                className={`w-full bg-black border rounded px-3 py-2 text-sm text-gray-400 font-mono focus:outline-none ${error && error.includes("403") ? "border-terminal-red ring-1 ring-terminal-red" : "border-gray-800 focus:border-gray-600"}`}
                             />
+                            {error && error.includes("403") && (
+                                <p className="text-terminal-red text-xs mt-1 font-mono">
+                                    Cloud/Shared IPs have 0 anonymous quota. Please paste a token above.
+                                </p>
+                            )}
                         </div>
 
                         <div>
@@ -294,8 +306,8 @@ const App: React.FC = () => {
 
             {error && (
               <div className="p-4 bg-red-900/20 border border-red-900 rounded-lg text-red-400 text-sm font-mono flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5" />
-                {error}
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 

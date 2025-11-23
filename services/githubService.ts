@@ -48,7 +48,7 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
     const fetchData = async (url: string) => {
         const res = await fetch(url, { headers });
         if (!res.ok) {
-            if (res.status === 403) throw new Error("GitHub API Rate Limit Exceeded. Please provide a Token.");
+            if (res.status === 403) throw new Error("GitHub API Rate Limit Exceeded (403). Cloud Run/Shared IPs hit limits instantly. You MUST provide a GitHub Token in Advanced Options.");
             if (res.status === 404) throw new Error("Repository not found or private.");
             // Don't throw for 404 on specific files, handle in caller, but throw for repo root
             return null; 
@@ -60,8 +60,16 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
 
     try {
         // PARALLEL STEP 1: Fetch Meta, Readme, Commits simultaneously
-        const [repoData, readmeData, commitsData] = await Promise.all([
-            fetch(baseUrl, { headers }).then(r => r.ok ? r.json() : Promise.reject(new Error(`Repo fetch failed: ${r.status}`))),
+        // We handle the main repo fetch explicitly to catch the 403 immediately
+        const repoRes = await fetch(baseUrl, { headers });
+        if (!repoRes.ok) {
+             if (repoRes.status === 403) throw new Error("GitHub Rate Limit (403). YOU MUST USE A GITHUB TOKEN in Advanced Options.");
+             if (repoRes.status === 404) throw new Error("Repository not found (404). Check URL or visibility.");
+             throw new Error(`Repo fetch failed: ${repoRes.status}`);
+        }
+        const repoData = await repoRes.json();
+
+        const [readmeData, commitsData] = await Promise.all([
             fetch(`${baseUrl}/readme`, { headers }).then(r => r.ok ? r.json() : null),
             fetch(`${baseUrl}/commits?per_page=20`, { headers }).then(r => r.ok ? r.json() : null)
         ]);
@@ -102,8 +110,9 @@ export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Prom
             } else {
                 fileTree = "[Tree fetch failed]";
             }
-        } catch (e) {
-            fileTree = "[Could not fetch file tree]";
+        } catch (e: any) {
+             if (e.message.includes("403")) throw e; // Re-throw rate limits
+             fileTree = "[Could not fetch file tree]";
         }
 
         // PARALLEL STEP 3: Fetch Content (Critical Files + Source Samples)
