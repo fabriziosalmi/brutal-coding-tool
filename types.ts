@@ -12,6 +12,7 @@ export interface AuditResult {
   scores: AuditScores | null;
   repoName: string;
   verdict: string;
+  modelUsed: string;
 }
 
 export enum AppState {

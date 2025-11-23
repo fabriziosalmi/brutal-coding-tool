@@ -1,5 +1,4 @@
-
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { AuditResult, AuditScores } from "../types";
 
 const SYSTEM_INSTRUCTION = `
@@ -76,6 +75,38 @@ IMPORTANT:
 }
 `;
 
+// Helper to perform the actual generation call
+async function performGeminiAudit(ai: GoogleGenAI, modelName: string, prompt: string): Promise<string> {
+    console.log(`[Gemini] Starting stream with model: ${modelName}`);
+    
+    const responseStream = await ai.models.generateContentStream({
+        model: modelName,
+        contents: prompt,
+        config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            temperature: 0.7, 
+        }
+    });
+
+    let fullText = '';
+    let chunkCount = 0;
+
+    for await (const chunk of responseStream) {
+        chunkCount++;
+        const text = chunk.text;
+        if (text) {
+            fullText += text;
+        }
+    }
+    
+    console.log(`[Gemini] Stream complete. Chunks: ${chunkCount}. Total Length: ${fullText.length}`);
+
+    if (!fullText) {
+        throw new Error(`Received empty response from ${modelName}`);
+    }
+    return fullText;
+}
+
 export const runAudit = async (repoUrl: string, codeContext: string): Promise<AuditResult> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key not found");
@@ -98,30 +129,19 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
   Be hyper-critical. Assume guilt until proven innocent.
   `;
 
+  let fullText = '';
+  let modelUsed = 'gemini-3-pro-preview';
+
   try {
-    // Use generateContentStream to prevent timeout issues with Gemini 3.0 Pro
-    // This keeps the connection alive while the model is thinking/generating.
-    const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-pro-preview',
-        contents: prompt,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          temperature: 0.7, 
-        }
-      });
-
-    let fullText = '';
-    
-    for await (const chunk of responseStream) {
-        // chunk is GenerateContentResponse
-        const text = chunk.text;
-        if (text) {
-            fullText += text;
-        }
-    }
-
-    if (!fullText) {
-        throw new Error("Received empty response from Gemini API.");
+    // Attempt 1: Gemini 3.0 Pro (Smart, but might time out or be flaky on streams in Cloud Run)
+    try {
+        fullText = await performGeminiAudit(ai, 'gemini-3-pro-preview', prompt);
+    } catch (primaryError) {
+        console.warn("[Gemini] Primary Model (Pro) Failed. Attempting Fallback.", primaryError);
+        
+        // Attempt 2: Gemini 2.5 Flash (Fast, reliable, cheaper)
+        modelUsed = 'gemini-2.5-flash';
+        fullText = await performGeminiAudit(ai, 'gemini-2.5-flash', prompt);
     }
 
     // Extract JSON block from the end
@@ -155,11 +175,12 @@ export const runAudit = async (repoUrl: string, codeContext: string): Promise<Au
       markdownReport: cleanMarkdown,
       scores,
       repoName: repoUrl.split('/').pop() || "Repository",
-      verdict
+      verdict,
+      modelUsed
     };
 
   } catch (error) {
-    console.error("Gemini Audit Failed", error);
+    console.error("Gemini Audit Final Failure", error);
     throw error;
   }
 };
