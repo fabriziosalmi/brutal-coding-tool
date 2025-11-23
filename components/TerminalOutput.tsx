@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 
 const MESSAGES = [
@@ -91,6 +90,10 @@ export const TerminalOutput: React.FC = () => {
         ? (remainingSteps * (STEP_DURATION / 1000)).toFixed(0) 
         : "STREAMING";
 
+    // Strict Display Logic for Steps
+    const totalSteps = MESSAGES.length;
+    const currentStepDisplay = Math.min(stepIndex + 1, totalSteps);
+
     return (
         <div className="w-full font-mono text-sm bg-black border border-gray-800 p-6 rounded-xl shadow-[0_0_30px_rgba(0,255,65,0.05)] relative overflow-hidden">
             {/* Header */}
@@ -129,7 +132,7 @@ export const TerminalOutput: React.FC = () => {
                     ></div>
                 </div>
                 <div className="flex justify-between text-[10px] text-gray-700 font-mono pt-1">
-                    <span>STEP {Math.min(stepIndex + 1, MESSAGES.length)}/{MESSAGES.length}</span>
+                    <span>STEP {currentStepDisplay}/{totalSteps}</span>
                     <span>THREADS: {Math.floor(Math.random() * 4) + 4} ACTIVE</span>
                 </div>
             </div>
