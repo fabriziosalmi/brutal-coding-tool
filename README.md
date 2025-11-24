@@ -455,6 +455,10 @@ Here is a list of 100 specific checks and fixes for **documentation, text genera
 100. **Final Spell Check** (Run the entire codebase through a linter like CSpell to catch typos in variable names and comments).
 ```
 
+## Bonus (GitHub Action)
+
+If you prefer to go faster, automated and by leveraging non-llm powered GitHub Actions just [check this out](https://github.com/marketplace/actions/vibeguard-auditor) :)
+
 ## ⚖️ License
 
 MIT // USE AT YOUR OWN RISK
