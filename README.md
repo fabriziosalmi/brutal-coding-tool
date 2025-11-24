@@ -29,7 +29,7 @@
 4. Run: `npm start`
 5. OPTIONAL: add rules
 
-THe rules:
+The rules:
 
 ```
 Never apply one or more of such methods:
@@ -348,6 +348,111 @@ Here is a list of 100 State-of-the-Art (SOTA), FAANG-level engineering patterns,
 98.  **Liskov Substitution Principle** (Objects of a superclass shall be replaceable with objects of its subclasses without breaking the application).
 99.  **Interface Segregation** (Clients should not be forced to depend upon interfaces that they do not use).
 100. **Dependency Inversion** (High-level modules should not depend on low-level modules; both should depend on abstractions).
+
+---
+
+Here is a list of 100 specific checks and fixes for **documentation, text generation, and in-repo copy**. This focuses on removing "vibecoded" fluff, hallucinations, and vague language to ensure the written word is as rigorous as the code itself.
+
+1.  **Remove "Simply" and "Just" from instructions** (Condescending language that assumes the user's skill level and frustrates them when it fails).
+2.  **Fix broken hyperlinks in `README.md`** (Link rot destroys credibility immediately; use a link checker).
+3.  **Replace "TODO" placeholders in documentation** (If you aren't going to write the section, delete the header so it doesn't look abandoned).
+4.  **Standardize capitalization in headers** (Mixing Title Case and sentence case looks amateurish and unplanned).
+5.  **Remove hardcoded API keys from example code blocks** (Documentation is the most common place where secrets are accidentally leaked).
+6.  **Add a specific `CONTRIBUTING.md` file** (Don't make contributors guess how to set up the dev environment or submit a PR).
+7.  **Clarify vague return descriptions like "returns data"** (Specify the exact shape, type, and fields of the returned object).
+8.  **Remove "Works on my machine" tone from troubleshooting** (Provide objective environmental requirements, not anecdotal evidence).
+9.  **Update `CHANGELOG.md` format to "Keep a Changelog" standards** (Dates, version numbers, and categorized changes: Added, Changed, Deprecated, Removed).
+10.  **Add `SECURITY.md` with reporting policy** (Tell researchers how to report vulnerabilities privately rather than opening public issues).
+11.  **Remove AI-generated "fluff" introductions** (Delete paragraphs like "In today's fast-paced digital world..." that add zero technical value).
+12.  **Verify code snippets actually run** (Documentation drift causes copy-paste examples to fail as the API evolves).
+13.  **Replace ASCII diagrams with Mermaid.js or SVG** (Text-based diagrams break on mobile and are hard to edit/maintain).
+14.  **Document all environment variables in `.env.example`** (Explain *what* the variable does, not just that it exists).
+15.  **Remove "master/slave" terminology** (Replace with "main/replica" or "primary/secondary" to meet modern inclusive standards).
+16.  **Remove "sanity check" terminology** (Replace with "validity check" or "integrity check" to avoid ableist language).
+17.  **Fix "Guys" to "Folks/Team/Everyone"** (Inclusive language ensures you don't alienate non-male contributors).
+18.  **Add Alt Text to all documentation images** (Documentation must be accessible to blind developers using screen readers).
+19.  **Explain the "Why", not just the "How"** (Contextualize *why* a specific architecture was chosen, don't just list the files).
+20.  **Remove commented-out documentation** (If the feature is gone, delete the docs; git history remembers).
+21.  **Standardize date formats** (ISO 8601 `YYYY-MM-DD` is the only acceptable format to avoid US/EU confusion).
+22.  **Add a Table of Contents for documents >500 words** (Deep linking is essential for navigability).
+23.  **Define all acronyms on first use** (Don't assume the reader knows what "AST" or "JWT" means in your specific context).
+24.  **Remove passive voice** (Use active voice: "The system sends an email" is clearer than "An email is sent by the system").
+25.  **Fix "Click here" links** (Link text should describe the destination for accessibility and SEO).
+26.  **Document known limitations and edge cases** (Honesty about what the software *cannot* do builds more trust than hype).
+27.  **Add prerequisite versions** (Specify `Node >= 18` or `Python 3.10+`, don't just say "Install Node").
+28.  **Remove "magic numbers" in comments** (Explain where the number `86400` comes from; don't just write `// 86400`).
+29.  **Sync JSDoc/Docstrings with function signatures** (If the params changed in code but not in docs, the docs are lying).
+30.  **Remove self-deprecating comments** (Delete `// This is a hack, sorry` and replace with a technical explanation of the constraint).
+31.  **Translate "geek speak" in user-facing error messages** (Users shouldn't see "NullReferenceException"; they should see "Something went wrong").
+32.  **Add expected output to CLI command examples** (Show the user what success looks like so they know if they succeeded).
+33.  **Remove wildly optimistic setup times** (Don't say "Setup in 5 minutes" if `npm install` takes 10; just say "Setup Instructions").
+34.  **Fix spelling errors in variable name explanations** (Typos in documentation lead to typos in implementation).
+35.  **Document the license clearly** (Ensure the `LICENSE` file matches the headers in source files).
+36.  **Remove "Lorem Ipsum" from screenshots** (Use realistic data in documentation screenshots to provide context).
+37.  **Explain the project directory structure** (Don't force a new developer to open every folder to map the project mental model).
+38.  **Add a "Troubleshooting" section** (Document the top 5 most common errors and their solutions).
+39.  **Remove unused badges/shields** (A "build passing" badge from a CI service you cancelled 2 years ago is misleading).
+40.  **Format JSON/YAML examples properly** (Ensure indentation is correct so users can copy-paste without syntax errors).
+41.  **Define the support policy** (Is this project maintained? LTS? Deprecated? Be explicit).
+42.  **Remove duplicate documentation** (Don't document the API in the README and a Wiki; they will de-sync. Single Source of Truth).
+43.  **Add syntax highlighting to all code blocks** (Specify the language ```javascript vs ```text for readability).
+44.  **Explain authentication flows** (Don't just show the endpoint; explain how to get the Bearer token).
+45.  **Remove "witty" or "sarcastic" error messages** (They aren't funny when the production server is down at 3 AM).
+46.  **Document the release process** (How is a new version cut? Automated? Manual? Who has keys?).
+47.  **Add a "Glossary" for domain-specific terms** (Essential if working in niche fields like fintech or biotech).
+48.  **Fix inconsistency in naming conventions in text** (Don't switch between "User", "Client", and "Customer" if they mean the same thing).
+49.  **Remove reference to internal company URLs** (External contributors cannot access your Jira or internal Wiki).
+50.  **Document CLI flags and arguments** (`--help` output should be mirrored in the static docs).
+51.  **Add a visual architecture diagram** (A high-level box-and-arrow chart saves 1,000 words of confusion).
+52.  **Clarify the distinction between Dev, Staging, and Prod** (Document specific configurations for each environment).
+53.  **Remove "future tense" promises** (Don't document features that are "coming soon" as if they are current APIs).
+54.  **Fix "dead" external links** (If a library you link to is 404, remove the reference).
+55.  **Add attribution for copied code** (If you pasted a StackOverflow solution, link the source in the comment for legal/context reasons).
+56.  **Document how to run tests** (Explain `npm test`, what suites exist, and how to interpret results).
+57.  **Remove "beta" warnings from stable features** (If it's been in prod for 3 years, remove the "Experimental" tag).
+58.  **Clarify "null" vs "undefined" behavior in API docs** (Be precise about optional fields vs. nullable fields).
+59.  **Add a "Code of Conduct"** (Standardize community behavior expectations).
+60.  **Remove informative comments that just repeat the code** (Delete `i++ // increments i`).
+61.  **Explain "Why we didn't use X"** (Documenting rejected alternatives prevents re-litigating decisions later).
+62.  **Fix grammar in "Success" messages** ("Data saved successfully" is better than "Data save success").
+63.  **Document database schema changes** (Explain what a migration does, don't just list the SQL).
+64.  **Remove hardcoded currency symbols in text** (Use generic terms or specify if the system is multi-currency).
+65.  **Add contacts for maintainers** (Who is the owner? Don't leave it to `git blame`).
+66.  **Clarify concurrency behavior** (Document if a function is thread-safe or not).
+67.  **Remove "Update this later" notes** (These are invisible technical debt; move them to the issue tracker).
+68.  **Document pagination implementation** (Explain cursors, offsets, and limits clearly).
+69.  **Fix inconsistent tense** (Don't mix "Click button" (imperative) and "The user clicks" (descriptive) in the same guide).
+70.  **Add "Time to Read" for long docs** (Manage user expectations).
+71.  **Remove hallucinations in AI-generated comments** (Verify that the AI didn't invent a method that doesn't exist).
+72.  **Document dependency reasoning** (Why do we need `lodash`? prevent bloat).
+73.  **Fix broken "Back to top" links** (Navigation frustration).
+74.  **Add explicit units to values** (Is `timeout: 500` milliseconds or seconds? Document it).
+75.  **Remove excessive exclamation marks** (Professional technical writing is calm; "Error!!!!" is panic).
+76.  **Document how to mock external services** (Help developers run the app without valid API keys for 3rd party tools).
+77.  **Clarify "Public" vs "Private" API surface** (Explicitly state what is stable for consumers to use).
+78.  **Remove colloquialisms and slang** (International speakers may not understand "the whole nine yards").
+79.  **Fix "copy-paste" errors in multiple files** (If you duplicated a file, ensure you updated the header description).
+80.  **Document browser support targets** (Explicitly state "Supports IE11" or "Modern Browsers Only").
+81.  **Remove blame-y language** (Change "User failed to input" to "Input was missing").
+82.  **Add generic templates for Issue Reporting** (Force structure on bug reports to get better data).
+83.  **Document the backup/restore strategy** (Crucial for ops teams).
+84.  **Fix whitespace in Markdown tables** (Misaligned columns are unreadable in raw text view).
+85.  **Remove "Old/New" comparison text after migration** (Once the migration is done, just document the "New" way).
+86.  **Document caching strategies** (Explain TTLs and cache invalidation logic).
+87.  **Add a "Quick Start" for the impatient** (A minimal viable path to running the app).
+88.  **Remove referencing UI elements by color** ("Click the red button" fails for colorblind users; use "Click 'Delete'").
+89.  **Document default values** (If a param is optional, what value does it take if omitted?).
+90.  **Fix broken math formatting** (Ensure LaTeX or formulas render correctly).
+91.  **Remove "Please" from CLI commands** (Computers don't need manners; keep syntax clean).
+92.  **Document GDPR/Privacy compliance** (Where is user data stored? How is it deleted?).
+93.  **Add search functionality to documentation site** (If the docs are large, a search bar is mandatory).
+94.  **Remove personal opinions from docs** ("I think React is bad" doesn't belong in the repo docs).
+95.  **Document how to clean/reset the environment** (`make clean` or `rm -rf dist` instructions).
+96.  **Fix inconsistent bullet point styles** (Don't mix dashes, asterisks, and numbers randomly).
+97.  **Add link to status page** (If the service depends on an API, link to its uptime monitor).
+98.  **Remove "basically" and "essentially"** (Filler words that weaken the definition).
+99.  **Document the "bus factor"** (If only one person knows how to deploy, write that down as a risk).
+100. **Final Spell Check** (Run the entire codebase through a linter like CSpell to catch typos in variable names and comments).
 ```
 
 ## ⚖️ License
