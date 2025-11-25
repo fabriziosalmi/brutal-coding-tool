@@ -4,7 +4,7 @@
 
 ![App Screenshot](./screenshot.png)
 
-**Brutal Rep Auditor** is a ruthless, AI-powered technical due diligence tool. It uses Google's Gemini 2.5 Flash model to ingest a GitHub repository's structure, commit history, and critical files to generate a "Brutal Reality Check" report.
+**Brutal Rep Auditor** is a ruthless, AI-powered technical due diligence tool. It uses Google's Gemini 3 models to ingest a GitHub repository's structure, commit history, and critical files to generate a "Brutal Reality Check" report.
 
 ## 🔥 Features
 
