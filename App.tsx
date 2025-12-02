@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Download, AlertTriangle, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw, Printer, Cpu } from 'lucide-react';
+import { Download, AlertTriangle, FileText, Flame, Github, Key, ChevronDown, ChevronUp, Loader2, RefreshCw, Printer, Cpu, ExternalLink } from 'lucide-react';
 import { AppState, AuditResult } from './types';
 import { runAudit } from './services/geminiService';
 import { fetchGitHubRepoData, formatContext } from './services/githubService';
@@ -263,13 +263,33 @@ const App: React.FC = () => {
             
             {/* ACTION BAR - Hidden in Print */}
             <div className="flex justify-between items-center mb-8 print:hidden sticky top-20 z-40 bg-black/80 backdrop-blur py-4 border-b border-gray-800">
-                 <button 
-                    onClick={handleReset}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white border border-gray-700 hover:border-terminal-red rounded-lg font-mono text-sm transition-all group"
-                >
-                    <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform" />
-                    AUDIT ANOTHER
-                </button>
+                 
+                 <div className="flex items-center gap-4">
+                     <button 
+                        onClick={handleReset}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white border border-gray-700 hover:border-terminal-red rounded-lg font-mono text-sm transition-all group"
+                    >
+                        <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform" />
+                        <span className="hidden sm:inline">AUDIT ANOTHER</span>
+                        <span className="sm:hidden">RESET</span>
+                    </button>
+
+                    <a 
+                        href={repoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-mono text-sm border-l border-gray-800 pl-4 py-1"
+                        title="Open Repository"
+                    >
+                        <Github className="w-4 h-4" />
+                        <span className="font-bold hidden md:inline truncate max-w-[300px]">
+                            {repoUrl.replace('https://github.com/', '').replace(/\/$/, '')}
+                        </span>
+                        <span className="font-bold md:hidden truncate max-w-[150px]">{result.repoName}</span>
+                        <ExternalLink className="w-3 h-3" />
+                    </a>
+                 </div>
+
                 <div className="flex items-center gap-4">
                     <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded bg-gray-900 border border-gray-800 text-xs font-mono text-gray-500">
                         <Cpu className={`w-3 h-3 ${result.modelUsed.includes('pro') ? 'text-terminal-green' : 'text-terminal-amber'}`} />

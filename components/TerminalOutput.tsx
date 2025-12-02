@@ -33,14 +33,18 @@ interface TerminalOutputProps {
 export const TerminalOutput: React.FC<TerminalOutputProps> = ({ status }) => {
     const [lines, setLines] = useState<string[]>([]);
     const [stepIndex, setStepIndex] = useState(0);
+    const totalSteps = MESSAGES.length;
 
     // Auto-advance simulated steps
     useEffect(() => {
         const interval = setInterval(() => {
-            setStepIndex(prev => prev + 1);
+            setStepIndex(prev => {
+                if (prev >= totalSteps) return prev;
+                return prev + 1;
+            });
         }, STEP_DURATION);
         return () => clearInterval(interval);
-    }, []);
+    }, [totalSteps]);
 
     // Effect to handle both simulated messages AND real status updates
     useEffect(() => {
@@ -59,14 +63,14 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ status }) => {
         }
 
         // Priority 2: Simulated messages
-        if (stepIndex < MESSAGES.length) {
+        if (stepIndex < totalSteps) {
             newMessage = MESSAGES[stepIndex];
             setLines(old => [...old.slice(-7), `> ${newMessage}`]);
         }
-    }, [stepIndex, status]);
+    }, [stepIndex, status, totalSteps]);
 
-    const totalSteps = 30;
-    const progress = Math.min(((stepIndex + 1) / totalSteps) * 100, 99);
+    const progress = Math.min(((stepIndex) / totalSteps) * 100, 100);
+    const displayStep = Math.min(stepIndex + 1, totalSteps);
     
     return (
         <div className="w-full font-mono text-sm bg-black border border-gray-800 p-6 rounded-xl shadow-[0_0_30px_rgba(0,255,65,0.05)] relative overflow-hidden">
@@ -76,7 +80,10 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ status }) => {
                     <div className="w-2 h-2 rounded-full bg-terminal-green animate-pulse"></div>
                     <span className="text-gray-400 text-xs uppercase tracking-wider">Deep Scan Protocol</span>
                  </div>
-                 <span className="text-terminal-green text-xs font-bold">{Math.round(progress)}%</span>
+                 <div className="flex items-center gap-3">
+                    <span className="text-gray-600 text-xs font-mono">STEP {displayStep}/{totalSteps}</span>
+                    <span className="text-terminal-green text-xs font-bold">{Math.round(progress)}%</span>
+                 </div>
             </div>
 
             {/* Log Output */}
