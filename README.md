@@ -25,8 +25,8 @@
 
 1. Clone the repo
 2. Install dependencies: `npm install`
-3. Set your API Key: `export API_KEY=your_gemini_key`
-4. Run: `npm start`
+3. Set your API Key: `export GEMINI_API_KEY=your_gemini_key`
+4. Run: `npm run dev`
 
 ## ⚖️ License
 
