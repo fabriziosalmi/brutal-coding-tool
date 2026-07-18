@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AuditResult, AuditScores } from "../types";
+import { AuditResult } from "../types";
 
 const VIBECODING_PATTERNS = `
 CRITICAL VIBECODING & SOTA PATTERNS TO DETECT (The "Vibecoding" Checklist):

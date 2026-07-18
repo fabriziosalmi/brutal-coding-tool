@@ -30,7 +30,7 @@ export const formatContext = (data: GitHubRepoData): string => {
 export const fetchGitHubRepoData = async (repoUrl: string, token?: string): Promise<GitHubRepoData> => {
     // 1. Parse URL
     const cleanUrl = repoUrl.trim().replace(/\/+$/, '');
-    const match = cleanUrl.match(/github\.com\/([^\/]+)\/([^\/?#]+)/);
+    const match = cleanUrl.match(/github\.com\/([^/]+)\/([^/?#]+)/);
     
     if (!match) {
         throw new Error("Invalid GitHub URL. Format: https://github.com/owner/repo");

@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      # Guard against the "HTML has no module entry" regression: a Vite build
+      # succeeds (exit 0) even when index.html never references index.tsx, in
+      # which case dist/ ships zero application JS and the page renders blank.
+      - name: Verify app bundle was emitted
+        run: |
+          if ls dist/assets/*.js >/dev/null 2>&1; then
+            echo "OK: application bundle present -> $(ls dist/assets/*.js)"
+          else
+            echo "::error::No JS bundle in dist/assets — the app entry point is not wired up."
+            exit 1
+          fi
