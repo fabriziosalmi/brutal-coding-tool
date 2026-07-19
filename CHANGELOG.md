@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **BYO-key at runtime — the Gemini API key is no longer baked into the build.**
+  Removed the Vite `define` that inlined `GEMINI_API_KEY` / `API_KEY` into the
+  client bundle at build time. The key is now entered by each user in the UI
+  (new `ApiKeyInput`), stored only in their browser's `localStorage`, and passed
+  explicitly to `runAudit` before going directly to Google's API. No secret is
+  emitted into `dist/`, so the built site is safe to deploy publicly.
+
 ## [0.1.0] - 2026-07-19
 
 First tagged release of **Brutal Rep Auditor** — a browser-based, AI-powered
@@ -39,4 +49,5 @@ it actually runnable from a fresh clone.
 - `.gitignore` now excludes `.env` / `.env.*` (keeping `.env.example`) so the
   Gemini API key can't be committed by accident.
 
+[Unreleased]: https://github.com/fabriziosalmi/brutal-coding-tool/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/fabriziosalmi/brutal-coding-tool/releases/tag/v0.1.0

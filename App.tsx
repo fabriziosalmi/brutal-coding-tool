@@ -4,6 +4,7 @@ import { Download, AlertTriangle, FileText, Flame, Github, Key, ChevronDown, Che
 import { AppState, AuditResult } from './types';
 import { runAudit } from './services/geminiService';
 import { fetchGitHubRepoData, formatContext } from './services/githubService';
+import { ApiKeyInput, loadStoredApiKey } from './components/ApiKeyInput';
 import { TerminalOutput } from './components/TerminalOutput';
 import { AuditDashboard } from './components/AuditDashboard';
 import { Phase1Matrix } from './components/Phase1Matrix';
@@ -11,9 +12,12 @@ import { ParetoFixPlan } from './components/ParetoFixPlan';
 
 // --- Main App ---
 
+const MISSING_KEY_MESSAGE = "Enter your Google Gemini API key to run an audit.";
+
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [repoUrl, setRepoUrl] = useState('');
+  const [geminiKey, setGeminiKey] = useState<string>(loadStoredApiKey);
   const [ghToken, setGhToken] = useState('');
   const [fetchedContext, setFetchedContext] = useState('');
   const [result, setResult] = useState<AuditResult | null>(null);
@@ -24,6 +28,11 @@ const App: React.FC = () => {
   const handleAudit = async () => {
     if (!repoUrl) {
       setError("Target repository URL is required.");
+      return;
+    }
+
+    if (!geminiKey.trim()) {
+      setError(MISSING_KEY_MESSAGE);
       return;
     }
 
@@ -61,7 +70,7 @@ const App: React.FC = () => {
 
     try {
       setLoadingStatus("Analyzing Code Quality...");
-      const data = await runAudit(repoUrl, auditContext);
+      const data = await runAudit(repoUrl, auditContext, geminiKey.trim());
       setLoadingStatus("Finalizing Report...");
       setResult(data);
       setState(AppState.COMPLETE);
@@ -180,8 +189,14 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              <ApiKeyInput
+                value={geminiKey}
+                onChange={setGeminiKey}
+                invalid={error === MISSING_KEY_MESSAGE}
+              />
+
               <div className="border-t border-gray-800 pt-4">
-                <button 
+                <button
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-white transition-colors mb-4"
                 >

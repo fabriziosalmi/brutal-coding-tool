@@ -10,17 +10,15 @@ It runs entirely in the browser — there is no backend.
 
 ## 🚀 Quickstart
 
-You need a free **Google Gemini API key** ([get one from Google AI Studio](https://aistudio.google.com/app/apikey)).
-
 ```bash
 git clone https://github.com/fabriziosalmi/brutal-coding-tool && cd brutal-coding-tool
 npm install
-echo "GEMINI_API_KEY=your_gemini_api_key" > .env.local && npm run dev
+npm run dev
 ```
 
-Then open <http://localhost:3000>, paste a repo URL, and hit **Initiate Brutal Audit**.
+Then open <http://localhost:3000>, paste a repo URL, enter your **Google Gemini API key** ([get a free one from Google AI Studio](https://aistudio.google.com/apikey)) in the field on the page, and hit **Initiate Brutal Audit**.
 
-> The key is read from `.env.local` (git-ignored) by Vite at startup. `export GEMINI_API_KEY=...` before `npm run dev` works too.
+> **Bring-your-own-key (BYO-key).** There is no backend and no build-time key. You paste your Gemini key into the UI; it is saved in your browser's `localStorage` and sent only to Google's Gemini API — it is never committed and never inlined into the JavaScript. Because nothing secret is baked into the build, the site is **safe to deploy publicly**.
 
 ## 🎬 Demo
 
@@ -94,7 +92,7 @@ This is a **local, single-purpose developer toy**, not a hardened product. Read 
 
 - **The audit is an LLM opinion, not ground truth.** It's non-deterministic, can be wrong or hallucinate, and is no substitute for a real code/security review. The footer says *"USE AT YOUR OWN RISK"* — it means it.
 - **Analysis is sampled, not exhaustive.** The tool sends Gemini only: the README, the **latest 20 commits**, the first **300** file paths, up to **3** manifest files (`package.json`, `Cargo.toml`, `go.mod`, `requirements.txt`, `pom.xml`, `docker-compose.yml`, `Dockerfile`, `Makefile`), and the **2 largest** source files between 1–50 KB (first 200 lines each). It does **not** read your whole repo.
-- **The Gemini API key is bundled into the client at build time.** This is fine for local use (`npm run dev`). **Do not deploy the built site publicly with a real key** — Vite inlines the key into the JavaScript, so anyone could read it. There is no server to hide it behind.
+- **Bring-your-own-key — no key is baked into the build.** Each visitor enters their own Gemini key in the UI; it is stored in that browser's `localStorage` and sent only to Google's API. The build inlines nothing secret, so the site is **safe to host publicly** — everyone brings their own key. (That key still travels from the browser directly to Google, so only paste a key you're comfortable using client-side.)
 - **GitHub calls are unauthenticated by default** and hit rate limits quickly (especially on shared/cloud IPs → `403`). Add a GitHub token under *Advanced Options*; it's used only client-side for direct calls to `api.github.com` and is not stored.
 - **Public repos only** — private repos aren't supported.
 - **`gemini-3-pro-preview` may not be enabled on your key**, in which case it silently falls back to `gemini-2.5-flash`. UI labels like "V2.4 // DEEP SCAN PROTOCOL" are flavor, not versioned guarantees.

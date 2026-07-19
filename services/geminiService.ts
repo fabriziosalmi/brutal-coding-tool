@@ -111,9 +111,10 @@ async function performGeminiAudit(ai: GoogleGenAI, modelName: string, prompt: st
     }
 }
 
-export const runAudit = async (repoUrl: string, codeContext: string): Promise<AuditResult> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key not found");
+export const runAudit = async (repoUrl: string, codeContext: string, apiKey: string): Promise<AuditResult> => {
+  // BYO-key: the caller passes the user's key (from the UI / localStorage).
+  // No secret is read from the environment or baked into the bundle.
+  if (!apiKey) throw new Error("Gemini API key is required");
 
   const ai = new GoogleGenAI({ apiKey });
 
