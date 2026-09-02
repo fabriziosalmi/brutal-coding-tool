@@ -35,6 +35,7 @@ jobs:
       # A fork pull request gets a read-only token whatever `permissions:` says,
       # so the upload would 403 and fail the job it promises not to fail.
       - name: Upload findings to code scanning
+        id: upload
         if: >-
           always()
           && hashFiles('slopless.sarif') != ''
@@ -45,3 +46,11 @@ jobs:
         with:
           sarif_file: slopless.sarif
           category: slopless
+
+      # A tolerated failure is still a failure, and from the pull request page it
+      # looks like nothing happened. An annotation says so where it is read,
+      # without turning a code-scanning API hiccup into a red build: the findings
+      # are in the log above either way, and an error has already failed the job.
+      - name: Say so if the findings did not reach the Security tab
+        if: always() && steps.upload.outcome == 'failure'
+        run: echo "::warning title=slopless::The analysis ran and the upload to code scanning did not. Findings are in the job log; the Security tab is stale for this commit."
