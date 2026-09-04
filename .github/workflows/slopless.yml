@@ -26,7 +26,7 @@ jobs:
       # Pinned to a commit rather than @v1: a moving tag means trusting the
       # upstream repository not to change under us.
       - name: Run slopless
-        uses: fabriziosalmi/slopless@7837fd959b607919593ed7ca6a23d2f8f9d4391f # v1.11.0
+        uses: fabriziosalmi/slopless@b3a4017bc0e382013da28564dab3b5ee4e23f981 # v1.12.1
         with:
           patterns: "*.ts *.tsx components/**/*.tsx services/**/*.ts *.md"
           format: sarif
